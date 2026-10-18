@@ -27,7 +27,7 @@ updateSettings();
 // ==========================================
 // 2. SOCKET CONNECTION & DATA
 // ==========================================
-const socket = io("https://orbitlive-9yv25c9e.b4a.run"); // YENİ LINK!
+const socket = io("https://orbitlive-9yv25c9e.b4a.run"); // YENİ LINK
 
 let flights = {}; 
 let selectedFlightId = null; 
@@ -56,7 +56,7 @@ socket.on('flightDataUpdate', (data) => {
                 targetLat: f.latitude, targetLng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed
             });
             
-            // Trail (Kuyruk) Geçmişi Güncelleme
+            // Trail (Kısa Kuyruk) Geçmişi Güncelleme
             const history = flights[f.flightId].history;
             const lastP = history[history.length - 1];
             if (lastP.lat !== f.latitude || lastP.lng !== f.longitude) {
@@ -130,7 +130,7 @@ function matchesFilters(f) {
 }
 
 function applyFilters() {
-    toggleFilterModal(false); // Modal'ı kapat
+    toggleFilterModal(false);
     closeInfoPanel();
 }
 
@@ -160,7 +160,7 @@ function drawFlights() {
             const pos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (pos.x < -50 || pos.x > canvas.width + 50 || pos.y < -50 || pos.y > canvas.height + 50) return;
 
-            // --- KUSURSUZ RENKLİ İRTİFA ÇİZGİSİ (RGB GRADIENT & BEZIER CURVE) ---
+            // --- 4.1 KISA VE KAVİSLİ İRTİFA ÇİZGİSİ (HER UÇAK İÇİN) ---
             if (f.history.length > 2) {
                 ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
 
@@ -198,7 +198,8 @@ function drawFlights() {
                 finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
                 ctx.strokeStyle = finalGrad; ctx.stroke(); ctx.globalAlpha = 1.0;
             }
-            // --- SEÇİLİ UÇAĞIN UÇUŞ PLANINI (KALKIŞTAN MEVCUT KONUMA) ÇİZ ---
+
+            // --- 4.2 SEÇİLİ UÇAĞIN UÇUŞ PLANINI (KALKIŞTAN MEVCUT KONUMA) ÇİZ ---
             if (selectedFlightId === f.id && f.fullRoute && f.fullRoute.length > 0) {
                 ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
                 
@@ -272,7 +273,7 @@ function drawFlights() {
                 }
             }
 
-            // --- UÇAK İKONU VE VURGU ---
+            // --- 4.3 UÇAK İKONU VE VURGU ---
             ctx.save();
             ctx.translate(pos.x, pos.y);
             ctx.rotate(f.heading * Math.PI / 180);
@@ -284,7 +285,7 @@ function drawFlights() {
             ctx.drawImage(planeImg, -14, -14, 28, 28);
             ctx.restore();
 
-            // --- YAZILAR ---
+            // --- 4.4 YAZILAR ---
             if (userLabel !== "NONE") {
                 let text = "";
                 if (userLabel === "CALLSIGN") text = f.callsign;
