@@ -80,7 +80,7 @@ let flights = {};
 let selectedFlightId = null; 
 let knownServers = [];
 
-const socket = io("https://orbitlive-9v23ykd1.b4a.run");
+const socket = io("orbitlive-9yv25c9e.b4a.run");
 
 socket.on('flightDataUpdate', (data) => {
     if (!data) return;
