@@ -3,105 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OrbitLive - Yüksek Performanslı Harita</title>
-    
-    <!-- Leaflet CSS -->
+    <title>OrbitLive - Radar</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        /* GENEL AYARLAR */
         body, html { margin: 0; padding: 0; height: 100%; background-color: #1a1a1a; overflow: hidden; font-family: Arial, sans-serif; }
-        
-        /* HARİTA VE CANVAS (Çizim Alanı) KATMANLARI */
         #map-container { position: relative; width: 100%; height: 100vh; }
         #map { width: 100%; height: 100%; z-index: 1; }
-        
-        /* Canvas haritanın tam üstüne şeffaf bir cam gibi yerleşir. Tıklamaları engellememesi için pointer-events: none yapıyoruz */
         #flight-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; pointer-events: none; }
 
-        /* ALT BİLGİ ÇUBUĞU (BOTTOM BAR) */
+        /* SUNUCU SEÇİCİ */
+        #server-selector {
+            position: absolute; top: 15px; left: 15px; z-index: 1000;
+            background: rgba(20,20,20,0.9); color: white; padding: 10px;
+            border-radius: 8px; border: 1px solid #007BFF;
+        }
+        #server-selector select { background: #333; color: white; padding: 5px; border: none; outline: none; border-radius: 4px; }
+
+        /* ALT BİLGİ ÇUBUĞU */
         #bottom-bar {
-            position: fixed;
-            bottom: -150px; /* Başlangıçta ekranın dışında, gizli */
-            left: 0;
-            width: 100%;
-            height: 120px;
-            background: rgba(15, 15, 15, 0.95);
-            color: #fff;
-            z-index: 1000;
-            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Yumuşak açılma animasyonu */
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            padding: 10px 20px;
-            box-sizing: border-box;
-            border-top: 3px solid #007BFF;
-            backdrop-filter: blur(8px);
+            position: fixed; bottom: -200px; left: 0; width: 100%; height: 150px;
+            background: rgba(15, 15, 15, 0.95); color: #fff; z-index: 1000;
+            transition: bottom 0.4s ease; border-top: 3px solid #007BFF;
+            padding: 15px 25px; box-sizing: border-box; backdrop-filter: blur(8px);
         }
-        #bottom-bar.active {
-            bottom: 0; /* Uçağa tıklanınca yukarı çıkar */
-        }
-        .bar-close {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            font-size: 28px;
-            cursor: pointer;
-            color: #aaa;
-            line-height: 1;
-        }
-        .bar-close:hover { color: #fff; }
-        
-        /* BAR İÇİNDEKİ YAZI TASARIMLARI */
-        .flight-info {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 30px;
-            width: 100%;
-        }
-        .flight-info div { display: flex; flex-direction: column; gap: 5px; }
-        .callsign { font-size: 24px; font-weight: bold; color: #007BFF; letter-spacing: 1px; }
-        .info-label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
-        .info-value { font-size: 17px; font-weight: normal; color: #eee; }
+        #bottom-bar.active { bottom: 0; }
+        .bar-close { position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer; color: #aaa; }
+        .grid-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; width: 90%; }
+        .info-box { display: flex; flex-direction: column; }
+        .callsign { font-size: 22px; font-weight: bold; color: #00bbff; }
+        .label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold; }
+        .value { font-size: 15px; color: #eee; }
     </style>
 </head>
 <body>
-
-    <!-- Harita ve Canvas Birleşimi -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- Tıklanınca Açılacak Alt Bilgi Çubuğu -->
+    <div id="server-selector">
+        <label for="serverDropdown">Sunucu: </label>
+        <select id="serverDropdown" onchange="filterServer()">
+            <option value="ALL">Tüm Sunucular</option>
+        </select>
+    </div>
+
     <div id="bottom-bar">
         <span class="bar-close" onclick="closeBottomBar()">&times;</span>
-        <div class="flight-info">
-            <div>
-                <span class="info-label">Callsign</span>
-                <span class="callsign" id="ui-callsign">---</span>
-            </div>
-            <div>
-                <span class="info-label">Kullanıcı / Pilot</span>
-                <span class="info-value" id="ui-username">---</span>
-            </div>
-            <div>
-                <span class="info-label">İrtifa</span>
-                <span class="info-value" id="ui-alt">--- ft</span>
-            </div>
-            <div>
-                <span class="info-label">Yer Hızı</span>
-                <span class="info-value" id="ui-speed">--- kts</span>
-            </div>
-            <div>
-                <span class="info-label">Yön (Heading)</span>
-                <span class="info-value" id="ui-heading">---°</span>
-            </div>
-            <div>
-                <span class="info-label">Sunucu</span>
-                <span class="info-value" id="ui-server" style="color: #00ff88;">---</span>
-            </div>
+        <div class="grid-info">
+            <div class="info-box"><span class="label">Callsign</span><span class="callsign" id="ui-callsign">---</span></div>
+            <div class="info-box"><span class="label">Pilot</span><span class="value" id="ui-username">---</span></div>
+            <div class="info-box"><span class="label">Uçak / Livery</span><span class="value" id="ui-aircraft">---</span></div>
+            <div class="info-box"><span class="label">İrtifa</span><span class="value" id="ui-alt">--- ft</span></div>
+            <div class="info-box"><span class="label">Hız</span><span class="value" id="ui-speed">--- kts</span></div>
+            <div class="info-box"><span class="label">Rota (Planlı)</span><span class="value" id="ui-route">Bilinmiyor</span></div>
+            <div class="info-box"><span class="label">Sunucu</span><span class="value" id="ui-server" style="color: #00ff88;">---</span></div>
         </div>
     </div>
 
@@ -109,191 +65,150 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
     <script>
-        // ==========================================
-        // 1. HARİTA (LEAFLET) KURULUMU
-        // ==========================================
-        const bounds = [[-85, -180], [85, 180]];
-        const map = L.map('map', {
-            center: [39.0, 35.0],
-            zoom: 5,
-            minZoom: 3,
-            maxBounds: bounds,
-            maxBoundsViscosity: 1.0,
-            zoomControl: false // Orijinal Zoom butonlarını gizle
-        });
-        
-        // Zoom butonunu sağ üst köşeye al
+        const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 3, zoomControl: false });
         L.control.zoom({ position: 'topright' }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
 
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 16
-        }).addTo(map);
-
-        // ==========================================
-        // 2. CANVAS AYARLARI (DONMA ÖNLEYİCİ)
-        // ==========================================
         const canvas = document.getElementById('flight-canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Canvas boyutunu ekran boyutuna eşitleyen fonksiyon
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-        // GÖNDERDİĞİN UÇAK GÖRSELİNİ (ghost.png) YÜKLE
+        // Uçak Resmi (Dosya hatasını önlemek için Base64 Kodlanmış SVG)
         const planeImg = new Image();
-        planeImg.src = 'ghost.png'; // Proje klasöründe "ghost.png" resminin bulunduğundan emin ol!
+        planeImg.src = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z'/%3E%3C/svg%3E";
 
-        // ==========================================
-        // 3. VERİ YÖNETİMİ VE SUNUCU BAĞLANTISI
-        // ==========================================
-        let flights = {}; // Tüm uçak verilerini RAM'de tutacağız
-        let selectedFlightId = null; // Tıklanan uçağı takip et
-        
-        // Kendi Back4App sunucu adresin (Eski haline dokunmadım)
+        let flights = {}; 
+        let selectedFlightId = null; 
+        let currentFilter = "ALL";
+        let knownServers = [];
+
+        // KENDİ BACKEND URL'Nİ YAZ
         const socket = io("https://orbitlive-75vteuay.b4a.run");
 
         socket.on('flightDataUpdate', (data) => {
-            if (!data || !data.result) return;
-            const currentIds = new Set();
+            if (!data) return;
 
+            // Sunucu listesini dropdown'a ekle
+            if (data.servers && data.servers.length !== knownServers.length) {
+                knownServers = data.servers;
+                const dropdown = document.getElementById("serverDropdown");
+                dropdown.innerHTML = '<option value="ALL">Tüm Sunucular</option>';
+                knownServers.forEach(s => dropdown.innerHTML += `<option value="${s}">${s}</option>`);
+                dropdown.value = currentFilter;
+            }
+
+            const currentIds = new Set();
             data.result.forEach(f => {
                 currentIds.add(f.flightId);
                 
                 if (flights[f.flightId]) {
-                    // Uçak önceden varsa sadece hedefini (target) güncelle
                     flights[f.flightId].targetLat = f.latitude;
                     flights[f.flightId].targetLng = f.longitude;
                     flights[f.flightId].heading = f.heading;
                     flights[f.flightId].altitude = f.altitude;
                     flights[f.flightId].speed = f.speed;
                     
-                    // Eğer kullanıcının tıkladığı uçak bu ise, Alt Bar'daki sayıları da canlı güncelle
-                    if (selectedFlightId === f.flightId) {
-                        updateBottomBar(flights[f.flightId]);
-                    }
+                    // İrtifa İzleri (Kuyruk) için konum kaydı (Maks 5 nokta performans için)
+                    flights[f.flightId].history.push({ lat: f.latitude, lng: f.longitude });
+                    if (flights[f.flightId].history.length > 5) flights[f.flightId].history.shift();
+
+                    if (selectedFlightId === f.flightId) updateBottomBar(flights[f.flightId]);
                 } else {
-                    // Uçak haritaya ilk kez giriyorsa sisteme ekle
                     flights[f.flightId] = {
-                        id: f.flightId,
-                        callsign: f.callsign,
-                        username: f.username,
-                        serverName: f.serverName,
-                        targetLat: f.latitude, // Varması gereken nokta
-                        targetLng: f.longitude,
-                        lat: f.latitude,       // Şu anki bulunduğu animasyon noktası
-                        lng: f.longitude,
-                        heading: f.heading,
-                        altitude: f.altitude,
-                        speed: f.speed
+                        id: f.flightId, callsign: f.callsign, username: f.username, 
+                        serverName: f.serverName, aircraftName: f.aircraftName, liveryName: f.liveryName,
+                        targetLat: f.latitude, targetLng: f.longitude, lat: f.latitude, lng: f.longitude,
+                        heading: f.heading, altitude: f.altitude, speed: f.speed,
+                        history: [{ lat: f.latitude, lng: f.longitude }]
                     };
                 }
             });
 
-            // Sunucudan (Oyundan) çıkan uçakları haritadan temizle
             Object.keys(flights).forEach(id => {
                 if (!currentIds.has(id)) {
                     delete flights[id];
-                    // Çıkan uçağı inceliyorsak menüyü kapat
                     if (selectedFlightId === id) closeBottomBar(); 
                 }
             });
         });
 
-        // ==========================================
-        // 4. MÜKEMMEL ANİMASYON DÖNGÜSÜ (60 FPS - Lerp)
-        // ==========================================
+        function getAltitudeColor(alt) {
+            if (alt < 10000) return '#ff3333';
+            if (alt < 20000) return '#ffaa00';
+            if (alt < 30000) return '#33cc33';
+            return '#00bbff';
+        }
+
         function drawFlights() {
-            // Her karede (frame) eski çizimleri tamamen sil (böylece kuyruk/iz kalmaz)
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             Object.values(flights).forEach(f => {
-                // SÜZÜLME MANTIĞI: Uçağın şu anki konumu ile hedef konumu arasındaki mesafeyi %2 oranında azaltarak yavaşça ilerletir
-                f.lat += (f.targetLat - f.lat) * 0.02;
-                f.lng += (f.targetLng - f.lng) * 0.02;
+                if (currentFilter !== "ALL" && f.serverName !== currentFilter) return; // Filtreleme
 
-                // Uçağın koordinatını cihaz ekranındaki (piksel) X ve Y noktasına dönüştür
+                f.lat += (f.targetLat - f.lat) * 0.03;
+                f.lng += (f.targetLng - f.lng) * 0.03;
+
                 const pos = map.latLngToContainerPoint([f.lat, f.lng]);
-
-                // EKRAN DIŞINDA KALAN UÇAKLARI ÇİZME (Görünmeyenleri işlemeyerek performansı 10 kat artırırız)
                 if (pos.x < -50 || pos.x > canvas.width + 50 || pos.y < -50 || pos.y > canvas.height + 50) return;
+
+                // İrtifa Çizgilerini (Kuyruk) Çizme
+                if (f.history.length > 1) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = getAltitudeColor(f.altitude);
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.6;
+                    for (let i = 0; i < f.history.length; i++) {
+                        const hPos = map.latLngToContainerPoint([f.history[i].lat, f.history[i].lng]);
+                        if (i === 0) ctx.moveTo(hPos.x, hPos.y);
+                        else ctx.lineTo(hPos.x, hPos.y);
+                    }
+                    ctx.lineTo(pos.x, pos.y); // Mevcut konuma bağla
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
 
                 ctx.save();
                 ctx.translate(pos.x, pos.y);
-                ctx.rotate(f.heading * Math.PI / 180); // Uçağın burnunu çevir
-
-                // Eğer uçak seçiliyse, etrafına vurgulayıcı Mavi Halka çiz
+                ctx.rotate(f.heading * Math.PI / 180);
                 if (selectedFlightId === f.id) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 18, 0, 2 * Math.PI);
-                    ctx.strokeStyle = '#007BFF'; // Mavi renk
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.arc(0, 0, 16, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#007BFF'; ctx.lineWidth = 3; ctx.stroke();
                 }
-
-                // GHOST.PNG Uçağını çizdiriyoruz. (Görseli merkeze almak için -12, -12 yazıldı)
-                // Boyutu 24x24 piksel olarak ayarlandı, gerekirse buradan büyütebilirsin.
                 ctx.drawImage(planeImg, -12, -12, 24, 24);
-                
                 ctx.restore();
             });
-
-            // Ekran yenileme hızına (FPS) göre döngüyü tekrarla
             requestAnimationFrame(drawFlights);
         }
-        
-        // Animasyon döngüsünü başlat
         drawFlights();
 
-        // ==========================================
-        // 5. TIKLAMA HESAPLAMASI VE ALT BİLGİ ÇUBUĞU (BOTTOM BAR)
-        // ==========================================
-        // Canvas üzerinden fare tıklaması almadığımız için, tıklamayı Leaflet haritasına yaptırıp piksel hesabı kullanıyoruz.
         map.on('click', function(e) {
-            const clickPos = e.containerPoint; // Ekranda tıklanan yerin pikseli
-            let clickedFlight = null;
-            let minDistance = 20; // Parmağınla tıkladığında 20 piksel yakınındaki uçağı algılar (Mobil için ideal)
-
+            let clicked = null; let minDistance = 20;
             Object.values(flights).forEach(f => {
+                if (currentFilter !== "ALL" && f.serverName !== currentFilter) return;
                 const pos = map.latLngToContainerPoint([f.lat, f.lng]);
-                // İki piksel arasındaki mesafeyi ölç (Pisagor teoremi)
-                const dist = Math.sqrt(Math.pow(pos.x - clickPos.x, 2) + Math.pow(pos.y - clickPos.y, 2));
-                
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    clickedFlight = f;
-                }
+                const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
+                if (dist < minDistance) { minDistance = dist; clicked = f; }
             });
-
-            if (clickedFlight) {
-                selectedFlightId = clickedFlight.id;
-                updateBottomBar(clickedFlight);
-                openBottomBar();
-            } else {
-                closeBottomBar(); // Boş bir denize/karaya tıklanırsa menüyü kapat
-            }
+            if (clicked) { selectedFlightId = clicked.id; updateBottomBar(clicked); openBottomBar(); } 
+            else closeBottomBar();
         });
 
-        function openBottomBar() { 
-            document.getElementById('bottom-bar').classList.add('active'); 
+        function filterServer() {
+            currentFilter = document.getElementById("serverDropdown").value;
+            closeBottomBar();
         }
-        
-        function closeBottomBar() { 
-            document.getElementById('bottom-bar').classList.remove('active'); 
-            selectedFlightId = null; 
-        }
+
+        function openBottomBar() { document.getElementById('bottom-bar').classList.add('active'); }
+        function closeBottomBar() { document.getElementById('bottom-bar').classList.remove('active'); selectedFlightId = null; }
         
         function updateBottomBar(f) {
             document.getElementById('ui-callsign').innerText = f.callsign || "Bilinmiyor";
             document.getElementById('ui-username').innerText = f.username || "Misafir Pilot";
+            document.getElementById('ui-aircraft').innerText = `${f.aircraftName || "?"} (${f.liveryName || "Bilinmiyor"})`;
             document.getElementById('ui-alt').innerText = Math.round(f.altitude).toLocaleString() + " ft";
             document.getElementById('ui-speed').innerText = Math.round(f.speed) + " kts";
-            document.getElementById('ui-heading').innerText = Math.round(f.heading) + "°";
-            document.getElementById('ui-server').innerText = f.serverName || "---";
+            document.getElementById('ui-server').innerText = f.serverName;
         }
     </script>
 </body>
