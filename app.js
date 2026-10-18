@@ -1,6 +1,7 @@
 // ==========================================
 // 1. MAP & CANVAS INIT
 // ==========================================
+// worldCopyJump: true -> Haritanın sağa/sola sonsuz döngüde kaymasını sağlar
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
 L.control.zoom({ position: 'topright' }).addTo(map);
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
@@ -10,12 +11,7 @@ const ctx = canvas.getContext('2d');
 function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-// Yakınlaştırma (Zoom) yaparken animasyon bozulmasın diye şeffaflaştırma efekti
-let isZooming = false;
-map.on('zoomstart', () => { isZooming = true; canvas.style.opacity = 0.2; });
-map.on('zoomend', () => { isZooming = false; canvas.style.opacity = 1; });
-
-let userColor = "#00F5D4"; 
+let userColor = "#00F5D4"; // Neon Cyan varsayılan
 let userLabel = "CALLSIGN";
 let planeImg = new Image();
 
@@ -30,7 +26,7 @@ updateSettings();
 // ==========================================
 // 2. SOCKET CONNECTION & DATA
 // ==========================================
-const socket = io("https://orbitlive-9yv25c9e.b4a.run"); 
+const socket = io("https://orbitlive-9yv25c9e.b4a.run"); // GÜNCEL LINK
 
 let flights = {}; 
 let selectedFlightId = null; 
@@ -44,7 +40,9 @@ socket.on('flightDataUpdate', (data) => {
         const dropdown = document.getElementById("serverDropdown");
         const currentVal = dropdown.value;
         dropdown.innerHTML = '<option value="ALL">All Servers</option>';
-        knownServers.forEach(s => dropdown.innerHTML += `<option value="${s.name}">${s.name} (${s.count})</option>`);
+        knownServers.forEach(s => {
+            dropdown.innerHTML += `<option value="${s.name}">${s.name} (${s.count})</option>`;
+        });
         dropdown.value = currentVal;
     }
 
@@ -62,13 +60,16 @@ socket.on('flightDataUpdate', (data) => {
                 history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude });
                 if (history.length > 25) history.shift(); 
             }
+
             if (selectedFlightId === f.flightId) updateInfoPanel(flights[f.flightId], false);
         } else {
             flights[f.flightId] = {
                 id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, 
-                virtualOrg: f.virtualOrganization, serverName: f.serverName, aircraftName: f.aircraftName, liveryName: f.liveryName,
+                virtualOrg: f.virtualOrganization, serverName: f.serverName, 
+                aircraftName: f.aircraftName, liveryName: f.liveryName,
                 targetLat: f.latitude, targetLng: f.longitude, lat: f.latitude, lng: f.longitude,
-                heading: f.heading, altitude: f.altitude, speed: f.speed, history: [{ lat: f.latitude, lng: f.longitude, alt: f.altitude }]
+                heading: f.heading, altitude: f.altitude, speed: f.speed,
+                history: [{ lat: f.latitude, lng: f.longitude, alt: f.altitude }]
             };
         }
     });
@@ -85,7 +86,10 @@ socket.on('flightDetailsData', (details) => {
     if (details) {
         document.getElementById('ui-origin').innerText = details.originAirport;
         document.getElementById('ui-dest').innerText = details.destinationAirport;
-        if (selectedFlightId && flights[selectedFlightId]) flights[selectedFlightId].fullRoute = details.route || [];
+        
+        if (selectedFlightId && flights[selectedFlightId]) {
+            flights[selectedFlightId].fullRoute = details.route || [];
+        }
     }
     document.getElementById('ui-origin').classList.remove('loading');
     document.getElementById('ui-dest').classList.remove('loading');
@@ -104,30 +108,41 @@ function matchesFilters(f) {
         const un = (f.username || "").toLowerCase();
         if (!cs.includes(term) && !un.includes(term)) return false;
     }
+
     const va = document.getElementById('fltVA').value.toLowerCase();
     if (va && !(f.virtualOrg || "").toLowerCase().includes(va)) return false;
+
     const livery = document.getElementById('fltLivery').value.toLowerCase();
     if (livery && !(f.liveryName || "").toLowerCase().includes(livery)) return false;
+
     const acCallsign = document.getElementById('fltCallsign').value.toLowerCase();
     if (acCallsign && !(f.callsign || "").toLowerCase().includes(acCallsign)) return false;
+
     const pilot = document.getElementById('fltPilot').value.toLowerCase();
     if (pilot && !(f.username || "").toLowerCase().includes(pilot)) return false;
 
     return true;
 }
 
-function applyFilters() { toggleFilterModal(false); closeInfoPanel(); }
+function applyFilters() {
+    toggleFilterModal(false);
+    closeInfoPanel();
+}
 
 // ==========================================
 // 4. CANVAS DRAWING (İrtifa Renkleri ve Rota)
 // ==========================================
+
+// YENİ İRTİFA RENK HARİTASI
 function getAltitudeColor(alt) {
-    if (alt < 10000) return '#FF007F'; // Neon Pink (Alçak)
-    if (alt < 25000) return '#00F5D4'; // Neon Cyan (Orta)
-    return '#00A8E8';                  // Mavi (Yüksek)
+    if (alt <= 5000) return '#FFFFFF';       // Beyaz (0 - 5.000)
+    if (alt <= 10000) return '#FFEA00';      // Sarı (5.001 - 10.000)
+    if (alt <= 20000) return '#00FF00';      // Yeşil (10.001 - 20.000)
+    if (alt <= 30000) return '#00bbff';      // Mavi (20.001 - 30.000)
+    if (alt <= 39999) return '#A200FF';      // Mor (30.001 - 39.999)
+    return '#FF0000';                        // Kırmızı (40.000 ve üstü)
 }
 
-// Görüş Alanı Filtresi (Çok uzak noktaların Canvas'ı çökertmesini engeller)
 function isSegmentVisible(p1, p2) {
     const pad = 100; const w = canvas.width + pad; const h = canvas.height + pad;
     if (p1.x < -pad && p2.x < -pad) return false;
@@ -139,7 +154,6 @@ function isSegmentVisible(p1, p2) {
 
 function drawFlights() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (isZooming) { requestAnimationFrame(drawFlights); return; } // Zoom yaparken çizmeyi durdur
 
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
@@ -153,7 +167,7 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             const isPlaneOnScreen = !(planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50);
 
-            // 🔥 SEÇİLİ UÇAĞIN UÇUŞ PLANINI VE ARA NOKTALARINI (WAYPOINTS) ÇİZ (Uçak ekranda olmasa bile çizilir)
+            // --- 4.1 SEÇİLİ UÇAĞIN UÇUŞ PLANINI (KALKIŞTAN MEVCUT KONUMA) ÇİZ ---
             if (selectedFlightId === f.id && f.fullRoute && f.fullRoute.length > 0) {
                 ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
                 
@@ -165,7 +179,6 @@ function drawFlights() {
 
                 let prevPos = null; let prevAlt = null;
 
-                // Kalkıştan itibaren tüm rotayı noktalarıyla çiz
                 for(let i = 0; i <= closestWpIndex; i++) {
                     const wp = f.fullRoute[i];
                     const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
@@ -182,7 +195,6 @@ function drawFlights() {
                         ctx.strokeStyle = grad; ctx.globalAlpha = 0.7; ctx.stroke();
                     }
 
-                    // Ekranda görünen Ara Noktaları (Waypoints) çiz
                     if (wpPos.x > -50 && wpPos.x < canvas.width + 50 && wpPos.y > -50 && wpPos.y < canvas.height + 50) {
                         ctx.beginPath(); ctx.arc(wpPos.x, wpPos.y, 3, 0, 2*Math.PI);
                         ctx.fillStyle = getAltitudeColor(wp.alt); ctx.fill();
@@ -197,7 +209,6 @@ function drawFlights() {
                     prevPos = wpPos; prevAlt = wp.alt;
                 }
 
-                // Rotayı Uçağın kuyruğuna bağla
                 if (prevPos && isSegmentVisible(prevPos, planePos)) {
                     ctx.beginPath(); ctx.moveTo(prevPos.x, prevPos.y); ctx.lineTo(planePos.x, planePos.y);
                     const finalGrad = ctx.createLinearGradient(prevPos.x, prevPos.y, planePos.x, planePos.y);
@@ -207,10 +218,10 @@ function drawFlights() {
                 }
             }
 
-            // Uçak ekran dışındaysa ikonu ve kısa kuyruğu çizerek donanımı yorma!
+            // --- Uçak ekran dışındaysa kalanları çizme ---
             if (!isPlaneOnScreen) return;
 
-            // KISA KAVİSLİ İRTİFA ÇİZGİSİ
+            // --- 4.2 KISA KAVİSLİ İRTİFA ÇİZGİSİ ---
             if (f.history.length > 2) {
                 ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
                 for (let i = 1; i < f.history.length - 1; i++) {
@@ -240,7 +251,7 @@ function drawFlights() {
                 ctx.strokeStyle = finalGrad; ctx.stroke(); ctx.globalAlpha = 1.0;
             }
 
-            // UÇAK İKONU VE VURGU
+            // --- 4.3 UÇAK İKONU VE VURGU ---
             ctx.save();
             ctx.translate(planePos.x, planePos.y);
             ctx.rotate(f.heading * Math.PI / 180);
@@ -252,7 +263,7 @@ function drawFlights() {
             ctx.drawImage(planeImg, -14, -14, 28, 28);
             ctx.restore();
 
-            // YAZILAR
+            // --- 4.4 YAZILAR ---
             if (userLabel !== "NONE") {
                 let text = "";
                 if (userLabel === "CALLSIGN") text = f.callsign;
