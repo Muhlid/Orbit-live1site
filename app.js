@@ -27,7 +27,7 @@ updateSettings();
 // ==========================================
 // 2. SOCKET CONNECTION & DATA
 // ==========================================
-const socket = io("https://orbitlive-9v23ykd1.b4a.run"); // YENİ LINK!
+const socket = io("https://orbitlive-9yv25c9e.b4a.run"); // YENİ LINK!
 
 let flights = {}; 
 let selectedFlightId = null; 
