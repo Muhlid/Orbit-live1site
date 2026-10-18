@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OrbitLive - Canlı Uçuş Haritası</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* GENEL AYARLAR */
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #1a1a1a; overflow: hidden; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 100vh; z-index: 1; }
+
+        /* UÇAK İKONU VE ANİMASYON (DONMA ÖNLEYİCİ) */
+        /* transition: all 15s linear; sayesinde uçak bir sonraki veriye kadar haritada pürüzsüzce süzülür (kayma olmaz) */
+        .plane-wrapper {
+            transition: transform 15s linear !important; 
+            will-change: transform; /* Tarayıcıya donanım hızlandırması yapmasını söyler, kasmayı önler */
+        }
+        .plane-icon {
+            font-size: 24px;
+            text-align: center;
+            line-height: 24px;
+            transition: transform 0.5s ease-in-out; /* Sadece uçağın kendi ekseni etrafında dönüşü için */
+            filter: drop-shadow(0px 0px 3px rgba(0,0,0,0.8));
+        }
+
+        /* ALT BİLGİ ÇUBUĞU (BOTTOM BAR) */
+        #bottom-bar {
+            position: fixed;
+            bottom: -150px; /* Başlangıçta gizli */
+            left: 0;
+            width: 100%;
+            height: 120px;
+            background: rgba(20, 20, 20, 0.95);
+            color: #fff;
+            z-index: 1000;
+            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            border-top: 2px solid #007BFF;
+            backdrop-filter: blur(5px);
+        }
+        #bottom-bar.active {
+            bottom: 0; /* Uçağa tıklanınca yukarı çıkar */
+        }
+        .bar-close {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .bar-close:hover { color: #fff; }
+        .flight-info {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            width: 100%;
+        }
+        .flight-info div { display: flex; flex-direction: column; gap: 5px; }
+        .callsign { font-size: 22px; font-weight: bold; color: #007BFF; }
+        .info-label { font-size: 12px; color: #aaa; text-transform: uppercase; }
+        .info-value { font-size: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- ALT BİLGİ ÇUBUĞU -->
+    <div id="bottom-bar">
+        <span class="bar-close" onclick="closeBottomBar()">&times;</span>
+        <div class="flight-info">
+            <div>
+                <span class="info-label">Callsign</span>
+                <span class="callsign" id="ui-callsign">---</span>
+            </div>
+            <div>
+                <span class="info-label">Pilot</span>
+                <span class="info-value" id="ui-username">---</span>
+            </div>
+            <div>
+                <span class="info-label">İrtifa (Altitude)</span>
+                <span class="info-value" id="ui-alt">--- ft</span>
+            </div>
+            <div>
+                <span class="info-label">Hız (Speed)</span>
+                <span class="info-value" id="ui-speed">--- kts</span>
+            </div>
+            <div>
+                <span class="info-label">Yön (Heading)</span>
+                <span class="info-value" id="ui-heading">---°</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script>
+        // 1. HARİTA AYARLARI (KAYMAYI VE YAKINLAŞTIRMAYI SABİTLEME)
+        const bounds = [[-85, -180], [85, 180]];
+        const map = L.map('map', {
+            center: [39.0, 35.0],
+            zoom: 5,
+            minZoom: 3,
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0,
+            zoomControl: false // Orijinal zoom tuşlarını gizle (Mobilde rahatlık için)
+        });
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 16
+        }).addTo(map);
+
+        // 2. HAFIZA YÖNETİMİ
+        const activePlanes = {}; 
+        const activeTrails = {}; // İrtifa çizgilerini tutacağımız sözlük
+        let selectedFlightId = null; // Tıklanan uçağı takip et
+
+        // 3. SUNUCU BAĞLANTISI (Kendi Back4App URL'ni buraya yaz)
+        const socket = io("https://orbitlive-75vteuay.b4a.run");
+
+        socket.on('flightDataUpdate', (data) => {
+            if (!data || !data.result) return;
+            const currentFlightIds = new Set();
+
+            data.result.forEach(flight => {
+                const id = flight.flightId;
+                currentFlightIds.add(id);
+
+                const latLng = [flight.latitude, flight.longitude];
+
+                // Uçak HTML İkonu (Animasyonlu)
+                const planeHtml = `<div class="plane-icon" style="transform: rotate(${flight.heading}deg);">✈️</div>`;
+                const planeIcon = L.divIcon({ html: planeHtml, className: 'plane-wrapper', iconSize: [24, 24], iconAnchor: [12, 12] });
+
+                if (activePlanes[id]) {
+                    // Zaten varsa sadece koordinatını güncelle (CSS transition sayesinde süzülerek gidecek)
+                    activePlanes[id].setLatLng(latLng);
+                    
+                    // İkonun yönünü güncellemek için (DOM'u baştan çizdirmeden)
+                    const iconElement = activePlanes[id].getElement();
+                    if (iconElement) {
+                        const innerIcon = iconElement.querySelector('.plane-icon');
+                        if (innerIcon) innerIcon.style.transform = `rotate(${flight.heading}deg)`;
+                    }
+
+                    // ROTA ÇİZGİSİNİ GÜNCELLE (Mevcut çizgiye yeni koordinatı ekle)
+                    if (activeTrails[id]) {
+                        activeTrails[id].addLatLng(latLng);
+                    }
+
+                    // Eğer bu uçak şu an seçiliyse (Bottom Bar açıksa), alt barı canlı güncelle
+                    if (selectedFlightId === id) {
+                        updateBottomBar(flight);
+                    }
+
+                } else {
+                    // YENİ UÇAK GELDİ
+                    const marker = L.marker(latLng, { icon: planeIcon }).addTo(map);
+                    
+                    // Uçağa Tıklama Olayı
+                    marker.on('click', () => {
+                        selectedFlightId = id;
+                        updateBottomBar(flight);
+                        openBottomBar();
+                    });
+
+                    activePlanes[id] = marker;
+
+                    // YENİ UÇAK İÇİN İRTİFA ÇİZGİSİ BAŞLAT (Kuyruktan geriye doğru uzanan çizgi)
+                    // Not: API'den kalkış noktası gelene kadar çizgi, uçağın haritada belirdiği ilk noktadan başlar.
+                    const trail = L.polyline([latLng], {
+                        color: getAltitudeColor(flight.altitude), // İrtifaya göre renk
+                        weight: 3,
+                        opacity: 0.6,
+                        dashArray: '5, 5' // Kesik kesik çizgi görünümü
+                    }).addTo(map);
+                    activeTrails[id] = trail;
+                }
+            });
+
+            // 4. BAĞLANTISI KOPAN UÇAKLARI SİL
+            Object.keys(activePlanes).forEach(id => {
+                if (!currentFlightIds.has(id)) {
+                    map.removeLayer(activePlanes[id]);
+                    if (activeTrails[id]) map.removeLayer(activeTrails[id]);
+                    delete activePlanes[id];
+                    delete activeTrails[id];
+                    
+                    if (selectedFlightId === id) closeBottomBar(); // Seçili uçak çıktıysa barı kapat
+                }
+            });
+        });
+
+        // --- YARDIMCI FONKSİYONLAR ---
+
+        // Alt Barı Açar
+        function openBottomBar() {
+            document.getElementById('bottom-bar').classList.add('active');
+        }
+
+        // Alt Barı Kapatır
+        function closeBottomBar() {
+            document.getElementById('bottom-bar').classList.remove('active');
+            selectedFlightId = null;
+        }
+
+        // Alt Bardaki Yazıları Günceller
+        function updateBottomBar(flight) {
+            document.getElementById('ui-callsign').innerText = flight.callsign || "Bilinmiyor";
+            document.getElementById('ui-username').innerText = flight.username || "Misafir Pilot";
+            document.getElementById('ui-alt').innerText = Math.round(flight.altitude).toLocaleString() + " ft";
+            document.getElementById('ui-speed').innerText = Math.round(flight.speed) + " kts";
+            document.getElementById('ui-heading').innerText = Math.round(flight.heading) + "°";
+        }
+
+        // İrtifaya (Altitude) Göre Çizgi Rengi Belirleme
+        function getAltitudeColor(alt) {
+            if (alt < 10000) return '#ff3333';      // Kırmızı (Alçak)
+            if (alt < 20000) return '#ffaa00';      // Turuncu (Orta)
+            if (alt < 30000) return '#33cc33';      // Yeşil (Yüksek)
+            return '#00bbff';                       // Mavi (Çok Yüksek - Seyir İrtifası)
+        }
+
+        // Harita boş bir yere tıklanırsa alt barı kapat
+        map.on('click', () => {
+            closeBottomBar();
+        });
+
+    </script>
+</body>
+</html>
