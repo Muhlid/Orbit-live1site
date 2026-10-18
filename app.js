@@ -89,6 +89,11 @@ socket.on('flightDetailsData', (details) => {
     if (details) {
         document.getElementById('ui-origin').innerText = details.originAirport;
         document.getElementById('ui-dest').innerText = details.destinationAirport;
+        
+        // Seçili uçağın tüm ara noktalarını (Waypoints) haritada çizmek üzere kaydet
+        if (selectedFlightId && flights[selectedFlightId]) {
+            flights[selectedFlightId].fullRoute = details.route || [];
+        }
     }
     document.getElementById('ui-origin').classList.remove('loading');
     document.getElementById('ui-dest').classList.remove('loading');
@@ -192,6 +197,79 @@ function drawFlights() {
                 finalGrad.addColorStop(0, getAltitudeColor(lastP.alt));
                 finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
                 ctx.strokeStyle = finalGrad; ctx.stroke(); ctx.globalAlpha = 1.0;
+            }
+            // --- SEÇİLİ UÇAĞIN UÇUŞ PLANINI (KALKIŞTAN MEVCUT KONUMA) ÇİZ ---
+            if (selectedFlightId === f.id && f.fullRoute && f.fullRoute.length > 0) {
+                ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
+                
+                // Uçağın şu anki konumuna en yakın ara noktayı buluyoruz
+                let closestWpIndex = 0;
+                let minWpDist = Infinity;
+                for(let i = 0; i < f.fullRoute.length; i++) {
+                    const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2);
+                    if(dist < minWpDist) {
+                        minWpDist = dist;
+                        closestWpIndex = i; // Uçağın şu an geçtiği en son ara nokta
+                    }
+                }
+
+                let prevPos = null;
+                let prevAlt = null;
+
+                // 1. Kalkıştan en son geçilen ara noktaya kadar çizgiyi çiz
+                for(let i = 0; i <= closestWpIndex; i++) {
+                    const wp = f.fullRoute[i];
+                    const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
+                    
+                    if (prevPos) {
+                        ctx.beginPath();
+                        ctx.moveTo(prevPos.x, prevPos.y);
+                        ctx.lineTo(wpPos.x, wpPos.y);
+                        
+                        // İrtifa renk geçişi (Gradient)
+                        const grad = ctx.createLinearGradient(prevPos.x, prevPos.y, wpPos.x, wpPos.y);
+                        grad.addColorStop(0, getAltitudeColor(prevAlt));
+                        grad.addColorStop(1, getAltitudeColor(wp.alt));
+                        
+                        ctx.strokeStyle = grad;
+                        ctx.globalAlpha = 0.6; // Çizgi şeffaflığı
+                        ctx.stroke();
+                    }
+
+                    // Ara Noktaları (Waypoint) Beyaz Yuvarlak ile Çiz
+                    ctx.beginPath();
+                    ctx.arc(wpPos.x, wpPos.y, 3, 0, 2*Math.PI);
+                    ctx.fillStyle = getAltitudeColor(wp.alt);
+                    ctx.fill();
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+                    
+                    // Ara Nokta İsmini Haritaya Yaz
+                    if (wp.name !== "") {
+                        ctx.fillStyle = "#fff"; ctx.font = "bold 10px 'Segoe UI', Arial";
+                        ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+                        ctx.fillText(wp.name, wpPos.x, wpPos.y - 8); ctx.shadowBlur = 0;
+                    }
+
+                    prevPos = wpPos;
+                    prevAlt = wp.alt;
+                }
+
+                // 2. En son geçilen ara noktadan Uçağın ŞU ANKİ konumuna bağlantı çiz
+                if (prevPos) {
+                    const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
+                    ctx.beginPath();
+                    ctx.moveTo(prevPos.x, prevPos.y);
+                    ctx.lineTo(planePos.x, planePos.y);
+                    
+                    const finalGrad = ctx.createLinearGradient(prevPos.x, prevPos.y, planePos.x, planePos.y);
+                    finalGrad.addColorStop(0, getAltitudeColor(prevAlt));
+                    finalGrad.addColorStop(1, getAltitudeColor(f.altitude)); // Uçağın kendi anlık irtifası
+                    
+                    ctx.strokeStyle = finalGrad;
+                    ctx.globalAlpha = 0.8;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
             }
 
             // --- UÇAK İKONU VE VURGU ---
