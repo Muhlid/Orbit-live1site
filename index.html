@@ -3,135 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OrbitLive - Professional Flight Radar</title>
+    <title>OrbitLive - Flight Tracker</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Custom CSS -->
+    <!-- Proje CSS Dosyası -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-    <!-- MAP & CANVAS CONTAINER -->
+    <!-- TOP NAVIGATION BAR -->
+    <div id="top-bar">
+        <div class="logo">OrbitLive</div>
+        
+        <!-- Tekli Arama Çubuğu -->
+        <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign or Pilot..." oninput="applyFilters()">
+
+        <!-- Sunucu Seçimi -->
+        <select id="serverDropdown" class="top-select" onchange="applyFilters()">
+            <option value="ALL">All Servers</option>
+        </select>
+
+        <button class="top-btn" onclick="toggleFilterModal()">🔍 Filters</button>
+        <button class="top-btn" onclick="toggleSettingsModal()">⚙️ Settings</button>
+    </div>
+
+    <!-- MAP CONTAINER -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- TOP BAR -->
-    <div id="top-bar">
-        <!-- Logo and Search Trigger -->
-        <div class="brand-container" onclick="togglePanel('search-panel')">
-            <div class="logo">Orbit<span class="live-text">Live</span></div>
-            <div class="search-icon">
-                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+    <!-- ADVANCED FILTERS MODAL (Gelişmiş Filtreleme Panosu) -->
+    <div id="filter-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="toggleFilterModal()">&times;</span>
+            <h2>Fleet Board & Filters</h2>
+            
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>ORIGIN (ICAO)</label>
+                    <input type="text" id="fltOrigin" placeholder="e.g. KLAX">
+                </div>
+                <div class="filter-group">
+                    <label>DESTINATION (ICAO)</label>
+                    <input type="text" id="fltDest" placeholder="e.g. EGLL">
+                </div>
             </div>
-        </div>
-        
-        <!-- Right Action Buttons -->
-        <div class="top-actions">
-            <button class="icon-btn disabled" title="ATC (Coming Soon)">
-                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
-                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
-                </svg>
-            </button>
-            <button class="icon-btn" onclick="togglePanel('settings-panel')" title="Settings">
-                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </button>
+
+            <div class="filter-group full-width">
+                <label>AIRPORT (IN + OUT)</label>
+                <input type="text" id="fltAirport" placeholder="e.g. EDDF">
+            </div>
+
+            <div class="filter-group full-width">
+                <label>LIVERY</label>
+                <input type="text" id="fltLivery" placeholder="e.g. KLM">
+            </div>
+
+            <div class="filter-group full-width">
+                <label>CALLSIGN</label>
+                <input type="text" id="fltCallsign" placeholder="e.g. KLM123">
+            </div>
+
+            <div class="filter-group full-width">
+                <label>VIRTUAL AIRLINE (VA)</label>
+                <input type="text" id="fltVA" placeholder="e.g. American Virtual">
+            </div>
+
+            <div class="filter-group full-width">
+                <label>PILOT (USERNAME)</label>
+                <input type="text" id="fltPilot" placeholder="e.g. laura">
+            </div>
+
+            <button class="apply-btn" onclick="applyFilters()">Search</button>
         </div>
     </div>
 
-    <!-- SEARCH & FILTER PANEL -->
-    <div id="search-panel" class="dropdown-panel">
-        <div class="panel-header">
-            <h3 class="panel-title">Search & Filter</h3>
-            <div class="close-btn" onclick="togglePanel('search-panel')">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="toggleSettingsModal()">&times;</span>
+            <h2>Radar Settings</h2>
+            
+            <div class="filter-group full-width">
+                <label>AIRCRAFT COLOR</label>
+                <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()">
             </div>
-        </div>
-        <div class="form-group">
-            <label>Callsign</label>
-            <input type="text" id="filter-callsign" placeholder="e.g. THY123">
-        </div>
-        <div class="form-group">
-            <label>Username / Pilot</label>
-            <input type="text" id="filter-username" placeholder="e.g. laura">
-        </div>
-        <div class="form-group">
-            <label>Server</label>
-            <select id="filter-server">
-                <option value="ALL">All Servers</option>
-            </select>
-        </div>
-        <button class="btn-primary" onclick="applyFilters()">Search & Apply</button>
-    </div>
-
-    <!-- SETTINGS PANEL -->
-    <div id="settings-panel" class="dropdown-panel">
-        <div class="panel-header">
-            <h3 class="panel-title">Map Settings</h3>
-            <div class="close-btn" onclick="togglePanel('settings-panel')">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            
+            <div class="filter-group full-width" style="margin-top: 15px;">
+                <label>AIRCRAFT LABEL</label>
+                <select id="planeLabelSelect" onchange="updateSettings()">
+                    <option value="NONE">None (Icon Only)</option>
+                    <option value="CALLSIGN" selected>Callsign</option>
+                    <option value="USERNAME">Username</option>
+                    <option value="VA">Virtual Airline</option>
+                    <option value="LIVERY">Livery</option>
+                </select>
             </div>
-        </div>
-        <div class="form-group">
-            <label>Map Style</label>
-            <select id="setting-maplayer" onchange="changeMapLayer()">
-                <option value="dark">OrbitLive Dark</option>
-                <option value="satellite">Satellite (HD)</option>
-                <option value="street">Streets</option>
-                <option value="terrain">Terrain / Topo</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Aircraft Label</label>
-            <select id="setting-label" onchange="updateVisualSettings()">
-                <option value="NONE">None (Aircraft Only)</option>
-                <option value="CALLSIGN" selected>Callsign</option>
-                <option value="USERNAME">Username</option>
-                <option value="VA">Virtual Airline (VA)</option>
-                <option value="LIVERY">Aircraft Livery</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Aircraft Color</label>
-            <input type="color" id="setting-color" value="#00F5D4" onchange="updateVisualSettings()">
         </div>
     </div>
 
-    <!-- FLIGHT INFO CARD (Bottom) -->
-    <div id="flight-info-card">
-        <div class="card-header">
-            <div>
-                <h2 class="card-title" id="ui-callsign">CALLSIGN</h2>
-                <div class="card-subtitle" id="ui-aircraft">B777 (Generic)</div>
-                <div class="card-server" id="ui-server">Expert Server</div>
-            </div>
-            <div class="close-btn" onclick="closeFlightCard()">
-                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </div>
-        </div>
-        <div class="grid-info">
-            <div class="info-box"><span class="info-label">Pilot</span><span class="info-value" id="ui-username">Guest</span></div>
-            <div class="info-box"><span class="info-label">Airline (VA)</span><span class="info-value" id="ui-va">None</span></div>
-            <div class="info-box"><span class="info-label">Altitude</span><span class="info-value" id="ui-alt">0 ft</span></div>
-            <div class="info-box"><span class="info-label">Speed</span><span class="info-value" id="ui-speed">0 kts</span></div>
-            <div class="info-box"><span class="info-label">Origin</span><span class="info-value loading" id="ui-origin">Loading...</span></div>
-            <div class="info-box"><span class="info-label">Destination</span><span class="info-value loading" id="ui-dest">Loading...</span></div>
+    <!-- SELECTED FLIGHT INFO PANEL (Tıklanan Uçağın Bilgi Kartı) -->
+    <div id="flight-info-panel" class="info-panel hidden">
+        <span class="close-btn" onclick="closeInfoPanel()">&times;</span>
+        <div class="info-header" id="ui-callsign">---</div>
+        <div class="info-grid">
+            <div class="info-item"><span class="label">PILOT</span><span class="value" id="ui-username">---</span></div>
+            <div class="info-item"><span class="label">VA</span><span class="value" id="ui-va">---</span></div>
+            <div class="info-item"><span class="label">AIRCRAFT</span><span class="value" id="ui-aircraft">---</span></div>
+            <div class="info-item"><span class="label">ALTITUDE</span><span class="value" id="ui-alt">--- ft</span></div>
+            <div class="info-item"><span class="label">SPEED</span><span class="value" id="ui-speed">--- kts</span></div>
+            <div class="info-item"><span class="label">ORIGIN</span><span class="value loading" id="ui-origin">Loading...</span></div>
+            <div class="info-item"><span class="label">DESTINATION</span><span class="value loading" id="ui-dest">Loading...</span></div>
+            <div class="info-item"><span class="label">SERVER</span><span class="value server-text" id="ui-server">---</span></div>
         </div>
     </div>
 
-    <!-- Leaflet & Socket.io JS -->
+    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <!-- Custom Application JS -->
     <script src="app.js"></script>
+
 </body>
 </html>
