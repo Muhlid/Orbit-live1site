@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OrbitLive - Flight Tracker</title>
+    <title>OrbitLive - Professional Flight Tracker</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
@@ -20,8 +20,14 @@
             <option value="ALL">All Servers</option>
         </select>
 
-        <button class="top-btn" onclick="toggleFilterModal()">🔍 Filters</button>
-        <button class="top-btn" onclick="toggleSettingsModal()">⚙️ Settings</button>
+        <button class="top-btn" onclick="toggleFilterModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            Filters
+        </button>
+        <button class="top-btn" onclick="toggleSettingsModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+        </button>
     </div>
 
     <!-- MAP CONTAINER -->
@@ -32,9 +38,8 @@
 
     <!-- ADVANCED FILTERS MODAL -->
     <div id="filter-modal" class="modal">
-        <!-- Filtre içeriği bir öncekiyle aynı kalacak -->
         <div class="modal-content">
-            <span class="close-btn" onclick="toggleFilterModal()">&times;</span>
+            <span class="close-btn" onclick="toggleFilterModal()">&#x2715;</span>
             <h2>Fleet Board & Filters</h2>
             <div class="filter-row">
                 <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin"></div>
@@ -51,7 +56,7 @@
     <!-- SETTINGS MODAL -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="toggleSettingsModal()">&times;</span>
+            <span class="close-btn" onclick="toggleSettingsModal()">&#x2715;</span>
             <h2>Radar Settings</h2>
             <div class="filter-group full-width">
                 <label>AIRCRAFT COLOR</label>
@@ -70,57 +75,62 @@
         </div>
     </div>
 
-    <!-- YENİ: SOL BİLGİ PANELİ (PLANE FINDER STYLE) -->
+    <!-- FLIGHT INFO PANEL -->
     <div id="flight-info-panel" class="info-card hidden">
-        <span class="close-btn-card" onclick="closeInfoPanel()">&times;</span>
+        <span class="close-btn-card" onclick="closeInfoPanel()">&#x2715;</span>
         
-        <!-- Üst Başlık ve İlerleme Çubuğu -->
         <div class="card-header">
             <div class="header-main">
-                <span id="ui-callsign" class="card-callsign">OZ502</span>
-                <span id="ui-aircraft" class="card-aircraft">A359</span>
+                <span id="ui-callsign" class="card-callsign">---</span>
+                <span id="ui-aircraft" class="card-aircraft">---</span>
             </div>
-            <div id="ui-va" class="card-va">Asiana Airlines</div>
+            <div id="ui-va" class="card-va">---</div>
         </div>
 
-        <!-- İlerleme Çubuğu ve Havalimanları -->
         <div class="progress-section">
             <div class="progress-bar-container">
                 <div id="ui-progress-fill" class="progress-fill"></div>
             </div>
             <div class="airports-row">
                 <div class="origin-block">
-                    <span class="ap-icon">🛫</span>
+                    <span class="ap-icon">DEP</span>
                     <span id="ui-origin" class="ap-name loading">Loading...</span>
                 </div>
                 <div class="dest-block">
-                    <span class="ap-icon">🛬</span>
+                    <span class="ap-icon">ARR</span>
                     <span id="ui-dest" class="ap-name loading">Loading...</span>
                 </div>
             </div>
         </div>
 
-        <!-- Uçuş Verileri Grid -->
+        <!-- YENİ DETAYLI VERİ TABLOSU -->
         <div class="data-grid">
             <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="value">--- ft</span></div>
             <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="value">--- kts</span></div>
+            
+            <div class="data-box"><span class="label">Flown (NM)</span><span id="ui-flown" class="value">--- nm</span></div>
+            <div class="data-box"><span class="label">Remaining (NM)</span><span id="ui-remaining" class="value">--- nm</span></div>
+            
+            <div class="data-box"><span class="label">Dep. Time</span><span id="ui-dep-time" class="value">---</span></div>
+            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="value">---</span></div>
+
+            <div class="data-box"><span class="label">Next Waypoint</span><span id="ui-next-wp" class="value">---</span></div>
             <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="value">---°</span></div>
-            <div class="data-box"><span class="label">Pilot</span><span id="ui-username" class="value">---</span></div>
-            <div class="data-box"><span class="label">Server</span><span id="ui-server" class="value server-text">---</span></div>
         </div>
 
-        <!-- Aksiyon Butonları -->
         <div class="card-actions">
-            <button id="btn-route" class="action-btn" onclick="toggleRoute()">🔀 Route</button>
-            <button id="btn-follow" class="action-btn" onclick="toggleFollow()">🎯 Follow</button>
+            <button id="btn-route" class="action-btn" onclick="toggleRoute()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><path d="M9 18l6-6-6-6"/></svg> Route
+            </button>
+            <button id="btn-follow" class="action-btn" onclick="toggleFollow()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg> Follow
+            </button>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <!-- Gündüz/Gece Terminatörü için Eklenti -->
-    <script src="https://unpkg.com/@joergdietrich/leaflet.terminator"></script>
     <script src="app.js"></script>
 
 </body>
