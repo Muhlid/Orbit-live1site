@@ -1,18 +1,8 @@
-// ==========================================
-// KENDİ BACKEND LİNKİNİ BURAYA YAZ:
-// Link değişirse sadece bu satırı güncelle!
-// ==========================================
 const BACKEND_URL = "https://orbitlive-j2t2jgf9.b4a.run";
 
-// ==========================================
-// 1. MAP & CANVAS INIT
-// ==========================================
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
 L.control.zoom({ position: 'topright' }).addTo(map);
-
-// Harita Katmanı ve Gece/Gündüz (Terminator) Çizgisi
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
-L.terminator({ fillOpacity: 0.3, color: '#000' }).addTo(map);
 
 const canvas = document.getElementById('flight-canvas');
 const ctx = canvas.getContext('2d');
@@ -31,16 +21,11 @@ function updateSettings() {
 }
 updateSettings();
 
-// ==========================================
-// 2. STATE & SOCKET CONNECTION
-// ==========================================
 const socket = io(BACKEND_URL);
 
 let flights = {}; 
 let selectedFlightId = null; 
 let knownServers = [];
-
-// Aksiyon Durumları
 let isFollowing = false;
 let isRouteMode = false;
 
@@ -68,10 +53,8 @@ socket.on('flightDataUpdate', (data) => {
             const lastP = history[history.length - 1];
             if (lastP.lat !== f.latitude || lastP.lng !== f.longitude) {
                 history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude });
-                if (history.length > 25) history.shift(); 
+                if (history.length > 50) history.shift(); // İrtifa çizgisi uzunluğu artırıldı (50 nokta)
             }
-
-            if (selectedFlightId === f.flightId) updateInfoPanel(flights[f.flightId], false);
         } else {
             flights[f.flightId] = {
                 id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, 
@@ -96,25 +79,22 @@ socket.on('flightDetailsData', (details) => {
         document.getElementById('ui-dest').innerText = details.destinationAirport;
         if (selectedFlightId && flights[selectedFlightId]) {
             flights[selectedFlightId].fullRoute = details.route || [];
-            updateProgressBar(flights[selectedFlightId]); // Rota gelince progress barı hesapla
+            updateCalculatedData(flights[selectedFlightId]); 
         }
     }
     document.getElementById('ui-origin').classList.remove('loading');
     document.getElementById('ui-dest').classList.remove('loading');
 });
 
-// Kuş uçuşu mesafe hesaplama (Progress Bar İçin)
-function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Dünya yarıçapı km
-    const dLat = (lat2-lat1) * Math.PI / 180;
-    const dLon = (lon2-lon1) * Math.PI / 180;
+// Mesafe Hesaplama (Nautical Miles - nm)
+function getDistanceNM(lat1, lon1, lat2, lon2) {
+    const R = 3440.1; // Dünya yarıçapı (nautical miles)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// ==========================================
-// 3. CANVAS DRAWING
-// ==========================================
 function getAltitudeColor(alt) {
     if (alt <= 5000) return '#FFFFFF';  
     if (alt <= 10000) return '#FFEA00'; 
@@ -124,21 +104,26 @@ function getAltitudeColor(alt) {
     return '#FF0000';                   
 }
 
+function matchesFilters(f) {
+    const srv = document.getElementById("serverDropdown").value;
+    const term = document.getElementById('topSearch').value.toLowerCase();
+    if (srv !== "ALL" && f.serverName !== srv) return false;
+    if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return false;
+    return true;
+}
+
 function drawFlights() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Follow modundaysa haritayı seçili uçağa kilitle
     if (isFollowing && selectedFlightId && flights[selectedFlightId]) {
-        const f = flights[selectedFlightId];
-        map.panTo([f.lat, f.lng], { animate: false });
+        map.panTo([flights[selectedFlightId].lat, flights[selectedFlightId].lng], { animate: false });
     }
 
     Object.values(flights).forEach(f => {
-        // Filtreden geçemeyenleri çizme
-        const srv = document.getElementById("serverDropdown").value;
-        const term = document.getElementById('topSearch').value.toLowerCase();
-        if (srv !== "ALL" && f.serverName !== srv) return;
-        if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return;
+        if (!matchesFilters(f)) return;
+
+        // ROTA MODU AÇIKSA DİĞER TÜM UÇAKLARI TAMAMEN GİZLE
+        if (isRouteMode && selectedFlightId !== f.id) return;
 
         f.lat += (f.targetLat - f.lat) * 0.04;
         f.lng += (f.targetLng - f.lng) * 0.04;
@@ -149,16 +134,10 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50) return;
 
-            // Route modu aktifse diğer uçakları soluklaştır
-            if (isRouteMode && selectedFlightId !== f.id) {
-                ctx.globalAlpha = 0.2;
-            } else {
-                ctx.globalAlpha = 1.0;
-            }
-
-            // SADECE SEÇİLİ UÇAK İÇİN İRTİFA ÇİZGİSİ VE ROTA ÇİZ
+            // SADECE SEÇİLİ UÇAĞIN İRTİFA ÇİZGİSİNİ VE ROTASINI ÇİZ
             if (selectedFlightId === f.id) {
-                // 1. Kısa Kuyruk İzi Çizimi
+                
+                // 1. Arkadaki Renkli İrtifa Çizgisi
                 if (f.history.length > 2) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3.5;
                     for (let i = 1; i < f.history.length - 1; i++) {
@@ -188,19 +167,34 @@ function drawFlights() {
                     ctx.strokeStyle = finalGrad; ctx.stroke();
                 }
 
-                // 2. EĞER ROUTE MODU AÇIKSA VARIŞ NOKTASINA KESİK ÇİZGİ ÇEK
+                // 2. ÖNDEKİ KESİK ÇİZGİLİ ROTA VE İSİMLER
                 if (isRouteMode && f.fullRoute && f.fullRoute.length > 0) {
-                    const destWp = f.fullRoute[f.fullRoute.length - 1];
-                    const destPos = map.latLngToContainerPoint([destWp.lat, destWp.lng + offset]);
-                    
+                    let closestWpIndex = 0; let minWpDist = Infinity;
+                    for(let i = 0; i < f.fullRoute.length; i++) {
+                        const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2);
+                        if(dist < minWpDist) { minWpDist = dist; closestWpIndex = i; }
+                    }
+
                     ctx.beginPath();
-                    ctx.setLineDash([8, 8]); // Kesik çizgi ayarı
-                    ctx.moveTo(planePos.x, planePos.y);
-                    ctx.lineTo(destPos.x, destPos.y);
-                    ctx.strokeStyle = "#FF007F"; // Neon Fuşya
+                    ctx.setLineDash([6, 6]); // Kesik çizgi
                     ctx.lineWidth = 2;
+                    ctx.moveTo(planePos.x, planePos.y);
+
+                    // Uçağın önündeki kalan ara noktaları çiz
+                    for(let i = closestWpIndex + 1; i < f.fullRoute.length; i++) {
+                        const wp = f.fullRoute[i];
+                        const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
+                        ctx.lineTo(wpPos.x, wpPos.y);
+
+                        // Ara nokta ismini yazdır
+                        if(wp.name) {
+                            ctx.fillStyle = "#fff"; ctx.font = "bold 10px Arial";
+                            ctx.fillText(wp.name, wpPos.x, wpPos.y - 8);
+                        }
+                    }
+                    ctx.strokeStyle = "#00F5D4"; 
                     ctx.stroke();
-                    ctx.setLineDash([]); // Diğer çizimleri bozmamak için sıfırla
+                    ctx.setLineDash([]); 
                 }
             }
 
@@ -208,11 +202,6 @@ function drawFlights() {
             ctx.save();
             ctx.translate(planePos.x, planePos.y);
             ctx.rotate(f.heading * Math.PI / 180);
-            if (selectedFlightId === f.id) {
-                ctx.beginPath(); ctx.arc(0, 0, 22, 0, 2 * Math.PI);
-                ctx.fillStyle = "rgba(0, 245, 212, 0.2)"; ctx.fill();
-                ctx.strokeStyle = '#00F5D4'; ctx.lineWidth = 2; ctx.stroke();
-            }
             ctx.drawImage(planeImg, -14, -14, 28, 28);
             ctx.restore();
 
@@ -225,21 +214,17 @@ function drawFlights() {
                 if (userLabel === "LIVERY") text = f.liveryName || "";
                 
                 if (text !== "") {
-                    ctx.fillStyle = userColor; ctx.font = "bold 12px 'Segoe UI', Arial";
+                    ctx.fillStyle = userColor; ctx.font = "bold 12px Arial";
                     ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 5;
                     ctx.fillText(text, planePos.x, planePos.y - 22); ctx.shadowBlur = 0; 
                 }
             }
         });
     });
-    ctx.globalAlpha = 1.0; // Her şey bitince sıfırla
     requestAnimationFrame(drawFlights);
 }
 drawFlights();
 
-// ==========================================
-// 4. UI INTERACTIONS (FOLLOW & ROUTE)
-// ==========================================
 map.on('click', function(e) {
     if (e.containerPoint.y < 60) return; 
 
@@ -259,33 +244,21 @@ map.on('click', function(e) {
     } else { closeInfoPanel(); }
 });
 
-// Follow (Takip) Butonu Mantığı
+map.on('dragstart', () => { if(isFollowing) toggleFollow(); });
+
 function toggleFollow() {
     isFollowing = !isFollowing;
     const btn = document.getElementById("btn-follow");
-    if(isFollowing) {
-        btn.classList.add("active-btn");
-        btn.innerText = "🎯 Following";
-    } else {
-        btn.classList.remove("active-btn");
-        btn.innerText = "🎯 Follow";
-    }
+    if(isFollowing) { btn.classList.add("active-btn"); btn.innerHTML = "🎯 Following"; } 
+    else { btn.classList.remove("active-btn"); btn.innerHTML = "🎯 Follow"; }
 }
 
-// Kullanıcı haritayı elle kaydırırsa Follow'u iptal et
-map.on('dragstart', () => {
-    if(isFollowing) toggleFollow();
-});
-
-// Route Butonu Mantığı (Auto-Fit Bounds)
 function toggleRoute() {
     isRouteMode = !isRouteMode;
     const btn = document.getElementById("btn-route");
     if(isRouteMode) {
         btn.classList.add("active-btn");
-        btn.innerText = "🔀 Route On";
-        
-        // Haritayı kalkış ve varış noktasına sığdır
+        btn.innerHTML = "🔀 Route On";
         if(selectedFlightId && flights[selectedFlightId].fullRoute && flights[selectedFlightId].fullRoute.length > 0) {
             const r = flights[selectedFlightId].fullRoute;
             const origin = [r[0].lat, r[0].lng];
@@ -295,36 +268,80 @@ function toggleRoute() {
         }
     } else {
         btn.classList.remove("active-btn");
-        btn.innerText = "🔀 Route";
+        btn.innerHTML = "🔀 Route";
     }
 }
 
-function updateProgressBar(f) {
-    if(f.fullRoute && f.fullRoute.length > 0) {
-        const origin = f.fullRoute[0];
-        const dest = f.fullRoute[f.fullRoute.length - 1];
-        const totalDist = getDistance(origin.lat, origin.lng, dest.lat, dest.lng);
-        const flownDist = getDistance(origin.lat, origin.lng, f.lat, f.lng);
-        
-        let progress = (flownDist / totalDist) * 100;
-        if(progress > 100) progress = 100;
-        
-        document.getElementById("ui-progress-fill").style.width = progress + "%";
-    } else {
-        document.getElementById("ui-progress-fill").style.width = "0%";
+// Saniyede 1 kez veri güncellemesi (Mesafe ve Saat Hesaplamaları)
+setInterval(() => {
+    if (selectedFlightId && flights[selectedFlightId]) {
+        updateCalculatedData(flights[selectedFlightId]);
+        document.getElementById('ui-alt').innerText = Math.round(flights[selectedFlightId].altitude).toLocaleString() + " ft";
+        document.getElementById('ui-speed').innerText = Math.round(flights[selectedFlightId].speed) + " kts";
+        document.getElementById('ui-heading').innerText = Math.round(flights[selectedFlightId].heading) + "°";
     }
+}, 1000);
+
+function updateCalculatedData(f) {
+    if(!f.fullRoute || f.fullRoute.length === 0) {
+        document.getElementById('ui-flown').innerText = "--- nm";
+        document.getElementById('ui-remaining').innerText = "--- nm";
+        document.getElementById('ui-dep-time').innerText = "---";
+        document.getElementById('ui-eta').innerText = "---";
+        document.getElementById('ui-next-wp').innerText = "---";
+        document.getElementById("ui-progress-fill").style.width = "0%";
+        return;
+    }
+    
+    const origin = f.fullRoute[0];
+    const dest = f.fullRoute[f.fullRoute.length - 1];
+    
+    // Mesafe Hesaplamaları
+    const flownDist = getDistanceNM(origin.lat, origin.lng, f.lat, f.lng);
+    const remainingDist = getDistanceNM(f.lat, f.lng, dest.lat, dest.lng);
+    
+    document.getElementById('ui-flown').innerText = Math.round(flownDist) + " nm";
+    document.getElementById('ui-remaining').innerText = Math.round(remainingDist) + " nm";
+    
+    // Zaman Hesaplamaları (Hız 50 kts üzerindeyse)
+    if (f.speed > 50) {
+        const now = new Date();
+        const remainingHours = remainingDist / f.speed;
+        const etaTime = new Date(now.getTime() + remainingHours * 3600000);
+        document.getElementById('ui-eta').innerText = etaTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        const flownHours = flownDist / f.speed;
+        const depTime = new Date(now.getTime() - flownHours * 3600000);
+        document.getElementById('ui-dep-time').innerText = depTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    } else {
+        document.getElementById('ui-eta').innerText = "N/A";
+        document.getElementById('ui-dep-time').innerText = "N/A";
+    }
+    
+    // Sonraki Ara Nokta Bulma
+    let closestWpIndex = 0; let minWpDist = Infinity;
+    for(let i = 0; i < f.fullRoute.length; i++) {
+        const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2);
+        if(dist < minWpDist) { minWpDist = dist; closestWpIndex = i; }
+    }
+    const nextWp = f.fullRoute[closestWpIndex + 1] || f.fullRoute[f.fullRoute.length - 1];
+    document.getElementById('ui-next-wp').innerText = nextWp ? nextWp.name : "N/A";
+    
+    // Progress Bar
+    const totalDist = flownDist + remainingDist;
+    let progress = (flownDist / totalDist) * 100;
+    if(progress > 100) progress = 100;
+    document.getElementById("ui-progress-fill").style.width = progress + "%";
 }
 
 function closeInfoPanel() { 
     document.getElementById('flight-info-panel').classList.remove('active'); 
     selectedFlightId = null; 
-    
-    // Paneli kapatınca modları da sıfırla
     if(isFollowing) toggleFollow();
     if(isRouteMode) toggleRoute();
 }
 
-function applyFilters() { closeInfoPanel(); }
+function applyFilters() { toggleFilterModal(false); closeInfoPanel(); }
 function toggleFilterModal(forceState) { const m = document.getElementById('filter-modal'); forceState === false ? m.classList.remove('active') : m.classList.toggle('active'); }
 function toggleSettingsModal() { document.getElementById('settings-modal').classList.toggle('active'); }
 
@@ -333,19 +350,10 @@ function updateInfoPanel(f, requestDetails) {
     document.getElementById('ui-username').innerText = f.username || "Guest Pilot";
     document.getElementById('ui-va').innerText = f.virtualOrg || "N/A";
     document.getElementById('ui-aircraft').innerText = `${f.aircraftName || "?"} (${f.liveryName || "Unknown"})`;
-    document.getElementById('ui-alt').innerText = Math.round(f.altitude).toLocaleString() + " ft";
-    document.getElementById('ui-speed').innerText = Math.round(f.speed) + " kts";
-    document.getElementById('ui-heading').innerText = Math.round(f.heading) + "°";
-    document.getElementById('ui-server').innerText = f.serverName;
-    document.getElementById('ui-progress-fill').style.width = "0%"; // Sıfırla
-
+    
     if (requestDetails) {
-        document.getElementById('ui-origin').innerText = "Loading...";
-        document.getElementById('ui-origin').classList.add('loading');
-        document.getElementById('ui-dest').innerText = "Loading...";
-        document.getElementById('ui-dest').classList.add('loading');
+        document.getElementById('ui-origin').innerHTML = '<span class="loading">Loading...</span>';
+        document.getElementById('ui-dest').innerHTML = '<span class="loading">Loading...</span>';
         socket.emit('requestFlightDetails', { sessionId: f.sessionId, flightId: f.id });
-    } else {
-        updateProgressBar(f); // Zaten açıksa barı canlı güncelle
     }
-}
+        }
