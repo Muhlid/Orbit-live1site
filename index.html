@@ -5,21 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OrbitLive - Flight Tracker</title>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Proje CSS Dosyası -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
     <!-- TOP NAVIGATION BAR -->
     <div id="top-bar">
-        <div class="logo">OrbitLive</div>
+        <div class="logo"><span class="text-orbit">Orbit</span><span class="text-live">Live</span></div>
         
-        <!-- Tekli Arama Çubuğu -->
         <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign or Pilot..." oninput="applyFilters()">
 
-        <!-- Sunucu Seçimi -->
         <select id="serverDropdown" class="top-select" onchange="applyFilters()">
             <option value="ALL">All Servers</option>
         </select>
@@ -34,48 +30,20 @@
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- ADVANCED FILTERS MODAL (Gelişmiş Filtreleme Panosu) -->
+    <!-- ADVANCED FILTERS MODAL -->
     <div id="filter-modal" class="modal">
+        <!-- Filtre içeriği bir öncekiyle aynı kalacak -->
         <div class="modal-content">
             <span class="close-btn" onclick="toggleFilterModal()">&times;</span>
             <h2>Fleet Board & Filters</h2>
-            
             <div class="filter-row">
-                <div class="filter-group">
-                    <label>ORIGIN (ICAO)</label>
-                    <input type="text" id="fltOrigin" placeholder="e.g. KLAX">
-                </div>
-                <div class="filter-group">
-                    <label>DESTINATION (ICAO)</label>
-                    <input type="text" id="fltDest" placeholder="e.g. EGLL">
-                </div>
+                <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin"></div>
+                <div class="filter-group"><label>DESTINATION (ICAO)</label><input type="text" id="fltDest"></div>
             </div>
-
-            <div class="filter-group full-width">
-                <label>AIRPORT (IN + OUT)</label>
-                <input type="text" id="fltAirport" placeholder="e.g. EDDF">
-            </div>
-
-            <div class="filter-group full-width">
-                <label>LIVERY</label>
-                <input type="text" id="fltLivery" placeholder="e.g. KLM">
-            </div>
-
-            <div class="filter-group full-width">
-                <label>CALLSIGN</label>
-                <input type="text" id="fltCallsign" placeholder="e.g. KLM123">
-            </div>
-
-            <div class="filter-group full-width">
-                <label>VIRTUAL AIRLINE (VA)</label>
-                <input type="text" id="fltVA" placeholder="e.g. American Virtual">
-            </div>
-
-            <div class="filter-group full-width">
-                <label>PILOT (USERNAME)</label>
-                <input type="text" id="fltPilot" placeholder="e.g. laura">
-            </div>
-
+            <div class="filter-group full-width"><label>LIVERY</label><input type="text" id="fltLivery"></div>
+            <div class="filter-group full-width"><label>CALLSIGN</label><input type="text" id="fltCallsign"></div>
+            <div class="filter-group full-width"><label>VIRTUAL AIRLINE (VA)</label><input type="text" id="fltVA"></div>
+            <div class="filter-group full-width"><label>PILOT (USERNAME)</label><input type="text" id="fltPilot"></div>
             <button class="apply-btn" onclick="applyFilters()">Search</button>
         </div>
     </div>
@@ -85,12 +53,10 @@
         <div class="modal-content">
             <span class="close-btn" onclick="toggleSettingsModal()">&times;</span>
             <h2>Radar Settings</h2>
-            
             <div class="filter-group full-width">
                 <label>AIRCRAFT COLOR</label>
                 <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()">
             </div>
-            
             <div class="filter-group full-width" style="margin-top: 15px;">
                 <label>AIRCRAFT LABEL</label>
                 <select id="planeLabelSelect" onchange="updateSettings()">
@@ -104,25 +70,57 @@
         </div>
     </div>
 
-    <!-- SELECTED FLIGHT INFO PANEL (Tıklanan Uçağın Bilgi Kartı) -->
-    <div id="flight-info-panel" class="info-panel hidden">
-        <span class="close-btn" onclick="closeInfoPanel()">&times;</span>
-        <div class="info-header" id="ui-callsign">---</div>
-        <div class="info-grid">
-            <div class="info-item"><span class="label">PILOT</span><span class="value" id="ui-username">---</span></div>
-            <div class="info-item"><span class="label">VA</span><span class="value" id="ui-va">---</span></div>
-            <div class="info-item"><span class="label">AIRCRAFT</span><span class="value" id="ui-aircraft">---</span></div>
-            <div class="info-item"><span class="label">ALTITUDE</span><span class="value" id="ui-alt">--- ft</span></div>
-            <div class="info-item"><span class="label">SPEED</span><span class="value" id="ui-speed">--- kts</span></div>
-            <div class="info-item"><span class="label">ORIGIN</span><span class="value loading" id="ui-origin">Loading...</span></div>
-            <div class="info-item"><span class="label">DESTINATION</span><span class="value loading" id="ui-dest">Loading...</span></div>
-            <div class="info-item"><span class="label">SERVER</span><span class="value server-text" id="ui-server">---</span></div>
+    <!-- YENİ: SOL BİLGİ PANELİ (PLANE FINDER STYLE) -->
+    <div id="flight-info-panel" class="info-card hidden">
+        <span class="close-btn-card" onclick="closeInfoPanel()">&times;</span>
+        
+        <!-- Üst Başlık ve İlerleme Çubuğu -->
+        <div class="card-header">
+            <div class="header-main">
+                <span id="ui-callsign" class="card-callsign">OZ502</span>
+                <span id="ui-aircraft" class="card-aircraft">A359</span>
+            </div>
+            <div id="ui-va" class="card-va">Asiana Airlines</div>
+        </div>
+
+        <!-- İlerleme Çubuğu ve Havalimanları -->
+        <div class="progress-section">
+            <div class="progress-bar-container">
+                <div id="ui-progress-fill" class="progress-fill"></div>
+            </div>
+            <div class="airports-row">
+                <div class="origin-block">
+                    <span class="ap-icon">🛫</span>
+                    <span id="ui-origin" class="ap-name loading">Loading...</span>
+                </div>
+                <div class="dest-block">
+                    <span class="ap-icon">🛬</span>
+                    <span id="ui-dest" class="ap-name loading">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Uçuş Verileri Grid -->
+        <div class="data-grid">
+            <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="value">--- ft</span></div>
+            <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="value">--- kts</span></div>
+            <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="value">---°</span></div>
+            <div class="data-box"><span class="label">Pilot</span><span id="ui-username" class="value">---</span></div>
+            <div class="data-box"><span class="label">Server</span><span id="ui-server" class="value server-text">---</span></div>
+        </div>
+
+        <!-- Aksiyon Butonları -->
+        <div class="card-actions">
+            <button id="btn-route" class="action-btn" onclick="toggleRoute()">🔀 Route</button>
+            <button id="btn-follow" class="action-btn" onclick="toggleFollow()">🎯 Follow</button>
         </div>
     </div>
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Gündüz/Gece Terminatörü için Eklenti -->
+    <script src="https://unpkg.com/@joergdietrich/leaflet.terminator"></script>
     <script src="app.js"></script>
 
 </body>
