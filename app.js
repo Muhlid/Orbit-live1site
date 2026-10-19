@@ -1,4 +1,4 @@
-const BACKEND_URL = "https://orbitlive-9yv25c9e.b4a.run";
+const BACKEND_URL = "https://orbitlive-j2t2jgf9.b4a.run";
 
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
