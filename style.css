@@ -1,104 +1,72 @@
-/* ORBITLIVE RENK PALETİ */
 :root {
-    --bg-main: #0B132B;       /* Derin Gece Mavisi */
-    --bg-card: #1C2541;       /* Açık Lacivert */
-    --neon-cyan: #00F5D4;     /* Birincil Vurgu */
-    --neon-pink: #FF007F;     /* ATC / Uyarılar */
-    --text-main: #FFFFFF;     /* Saf Beyaz */
-    --text-sec: #5C677D;      /* Kül Grisi */
+    --bg-main: #0B132B;       
+    --bg-card: #1C2541;       
+    --neon-cyan: #00F5D4;     
+    --neon-pink: #FF007F;     
+    --text-main: #FFFFFF;     
+    --text-sec: #5C677D;      
 }
 
-body, html { 
-    margin: 0; padding: 0; height: 100%; 
-    background-color: var(--bg-main); 
-    overflow: hidden; 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    color: var(--text-main);
-}
+body, html { margin: 0; padding: 0; height: 100%; background-color: var(--bg-main); overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; color: var(--text-main); }
 
-/* TOP BAR */
-#top-bar {
-    position: fixed; top: 0; left: 0; width: 100%; height: 60px;
-    background: var(--bg-card); display: flex; align-items: center;
-    padding: 0 20px; box-sizing: border-box; z-index: 2000;
-    border-bottom: 2px solid var(--neon-cyan); 
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5); gap: 15px;
-}
+/* TOP BAR VE YENİ LOGO */
+#top-bar { position: fixed; top: 0; left: 0; width: 100%; height: 60px; background: var(--bg-card); display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 2000; border-bottom: 2px solid var(--neon-cyan); box-shadow: 0 4px 15px rgba(0,0,0,0.5); gap: 15px; }
+.logo { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-right: auto; cursor: pointer; }
+.text-orbit { color: var(--text-main); text-shadow: 0 0 5px rgba(255,255,255,0.3); }
+.text-live { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0, 245, 212, 0.4); }
 
-.logo { 
-    font-size: 24px; font-weight: 900; color: var(--neon-cyan); 
-    letter-spacing: 1px; margin-right: auto; cursor: pointer;
-    text-shadow: 0 0 10px rgba(0, 245, 212, 0.4); 
-}
+.search-input { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--text-sec); padding: 8px 15px; border-radius: 20px; outline: none; width: 250px; }
+.search-input:focus { border-color: var(--neon-cyan); }
+.top-select, .top-btn { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--text-sec); padding: 8px 15px; border-radius: 6px; outline: none; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.3s ease; }
+.top-btn:hover, .top-select:hover { background: var(--neon-cyan); color: var(--bg-main); border-color: var(--neon-cyan); }
 
-.search-input {
-    background: var(--bg-main); color: var(--text-main); 
-    border: 1px solid var(--text-sec); padding: 8px 15px; 
-    border-radius: 20px; outline: none; width: 250px;
-}
-.search-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(0, 245, 212, 0.3); }
-
-.top-select, .top-btn {
-    background: var(--bg-main); color: var(--text-main); 
-    border: 1px solid var(--text-sec); padding: 8px 15px; 
-    border-radius: 6px; outline: none; cursor: pointer; font-size: 13px; font-weight: bold;
-    transition: all 0.3s ease;
-}
-.top-btn:hover, .top-select:hover { 
-    background: var(--neon-cyan); color: var(--bg-main); border-color: var(--neon-cyan); 
-}
-
-/* MAP & CANVAS */
 #map-container { position: relative; width: 100%; height: calc(100vh - 60px); margin-top: 60px; }
 #map { width: 100%; height: 100%; z-index: 1; }
 #flight-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; pointer-events: none; }
 
-/* MODALS (Settings & Filters) */
-.modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(11, 19, 43, 0.9); z-index: 3000; display: none;
-    align-items: center; justify-content: center; backdrop-filter: blur(5px);
-}
+/* MODALS */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 19, 43, 0.9); z-index: 3000; display: none; align-items: center; justify-content: center; }
 .modal.active { display: flex; }
-.modal-content {
-    background: var(--bg-card); width: 400px; padding: 25px; 
-    border-radius: 12px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    border: 1px solid rgba(0, 245, 212, 0.2);
-}
-.modal-content h2 { margin-top: 0; color: var(--neon-cyan); font-size: 22px; margin-bottom: 20px; }
+.modal-content { background: var(--bg-card); width: 400px; padding: 25px; border-radius: 12px; position: relative; border: 1px solid rgba(0, 245, 212, 0.2); }
 .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: var(--text-sec); }
-.close-btn:hover { color: var(--text-main); }
-
-/* FILTER FORM ELEMENTS */
 .filter-row { display: flex; gap: 15px; margin-bottom: 15px; }
 .filter-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
 .filter-group.full-width { margin-bottom: 15px; }
-.filter-group label { font-size: 11px; color: var(--text-sec); font-weight: bold; }
-.filter-group input, .filter-group select {
-    background: var(--bg-main); color: var(--text-main); border: 1px solid var(--text-sec);
-    padding: 10px; border-radius: 6px; outline: none; width: 100%; box-sizing: border-box;
-}
-.filter-group input:focus { border-color: var(--neon-cyan); }
-.apply-btn {
-    width: 100%; background: #00A8E8; /* Resimdeki mavi buton */ color: white;
-    padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
-    font-size: 16px; margin-top: 10px; transition: background 0.3s;
-}
-.apply-btn:hover { background: var(--neon-cyan); color: var(--bg-main); }
+.filter-group input, .filter-group select { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--text-sec); padding: 10px; border-radius: 6px; outline: none; width: 100%; box-sizing: border-box; }
+.apply-btn { width: 100%; background: var(--neon-cyan); color: var(--bg-main); padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
 
-/* FLIGHT INFO SIDE PANEL (Sağ Taraftan Açılan Kart) */
-.info-panel {
-    position: fixed; top: 80px; right: -400px; width: 320px;
-    background: var(--bg-card); color: var(--text-main); z-index: 2500;
-    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 12px; padding: 20px; box-shadow: -5px 5px 20px rgba(0,0,0,0.5);
-    border: 1px solid var(--text-sec);
+/* YENİ: PLANE FINDER STYLE SOL BİLGİ KARTI */
+.info-card {
+    position: fixed; top: 80px; left: -400px; width: 340px;
+    background: rgba(28, 37, 65, 0.95); color: var(--text-main); z-index: 2500;
+    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 16px; padding: 20px; box-shadow: 5px 5px 25px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
 }
-.info-panel.active { right: 20px; }
-.info-header { font-size: 26px; font-weight: bold; color: var(--neon-cyan); margin-bottom: 15px; }
-.info-grid { display: flex; flex-direction: column; gap: 12px; }
-.info-item { display: flex; flex-direction: column; }
-.info-item .label { font-size: 11px; color: var(--text-sec); font-weight: bold; }
-.info-item .value { font-size: 15px; font-weight: 500; }
-.value.loading { color: #f39c12; font-style: italic; font-size: 13px; }
-.server-text { color: var(--neon-pink) !important; font-weight: bold; }
+.info-card.active { left: 20px; }
+.close-btn-card { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: var(--text-sec); }
+.close-btn-card:hover { color: var(--text-main); }
+
+.card-header { margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+.header-main { display: flex; align-items: baseline; gap: 10px; }
+.card-callsign { font-size: 28px; font-weight: 900; color: var(--text-main); }
+.card-aircraft { font-size: 14px; color: var(--neon-cyan); font-weight: bold; background: rgba(0,245,212,0.1); padding: 2px 6px; border-radius: 4px; }
+.card-va { font-size: 14px; color: var(--text-sec); margin-top: 5px; }
+
+.progress-section { margin-bottom: 20px; }
+.progress-bar-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+.progress-fill { height: 100%; background: var(--neon-cyan); width: 0%; transition: width 1s ease; }
+.airports-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+.ap-name { display: block; margin-top: 5px; }
+.ap-name.loading { color: #f39c12; font-style: italic; font-size: 12px; }
+
+.data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+.data-box { display: flex; flex-direction: column; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+.data-box .label { font-size: 10px; color: var(--text-sec); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+.data-box .value { font-size: 16px; font-weight: bold; }
+.server-text { color: var(--neon-pink) !important; }
+
+.card-actions { display: flex; gap: 10px; }
+.action-btn { flex: 1; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+.action-btn:hover { background: rgba(255,255,255,0.1); }
+.action-btn.active-btn { background: var(--neon-cyan); color: var(--bg-main); border-color: var(--neon-cyan); }
