@@ -6,8 +6,15 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_D
 
 const canvas = document.getElementById('flight-canvas');
 const ctx = canvas.getContext('2d');
-function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+// DÜZELTME: Canvas boyutu tüm pencereye değil, sadece harita kabına göre ayarlandı (60px tıklama kaymasını çözer)
+function resizeCanvas() { 
+    const container = document.getElementById('map-container');
+    canvas.width = container.clientWidth; 
+    canvas.height = container.clientHeight; 
+}
+window.addEventListener('resize', resizeCanvas); 
+resizeCanvas();
 
 let userColor = "#00F5D4"; 
 let userLabel = "CALLSIGN";
@@ -86,7 +93,6 @@ socket.on('flightDetailsData', (details) => {
     document.getElementById('ui-dest').classList.remove('loading');
 });
 
-// Mesafe Hesaplama (Nautical Miles - nm)
 function getDistanceNM(lat1, lon1, lat2, lon2) {
     const R = 3440.1; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -122,7 +128,7 @@ function drawFlights() {
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
 
-        // ROTA MODU AÇIKSA DİĞER TÜM UÇAKLARI TAMAMEN GİZLE (ÇİZME)
+        // DÜZELTME: Route modu açıksa diğer uçakları tamamen gizle
         if (isRouteMode && selectedFlightId !== f.id) return;
 
         f.lat += (f.targetLat - f.lat) * 0.04;
@@ -134,10 +140,10 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50) return;
 
-            // --- SADECE SEÇİLİ UÇAĞIN İRTİFA ÇİZGİSİNİ VE ROTASINI ÇİZ ---
+            // SADECE SEÇİLİ UÇAĞIN İRTİFA ÇİZGİSİ VE ROTA
             if (selectedFlightId === f.id) {
                 
-                // 1. Kalkıştan uçağa kadar (VEYA Uçuş planı yoksa arkadaki kısa izi) Renkli İrtifa Çizgisi çiz
+                // 1. Kalkıştan uçağa kadar (veya uçuş planı yoksa arkadaki kısa izi) Renkli İrtifa Çizgisi
                 if (f.fullRoute && f.fullRoute.length > 0) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
                     
@@ -153,7 +159,8 @@ function drawFlights() {
                         const wp = f.fullRoute[i];
                         const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
                         
-                        if (prevPos) {
+                        // DÜZELTME: Aynı noktadaysa gradient çizimini atla (Çökmeyi engeller)
+                        if (prevPos && (prevPos.x !== wpPos.x || prevPos.y !== wpPos.y)) {
                             ctx.beginPath();
                             ctx.moveTo(prevPos.x, prevPos.y);
                             ctx.lineTo(wpPos.x, wpPos.y);
@@ -163,7 +170,6 @@ function drawFlights() {
                             ctx.strokeStyle = grad; ctx.globalAlpha = 0.9; ctx.stroke();
                         }
 
-                        // Waypoint noktaları ve İsimleri
                         if (wpPos.x > -50 && wpPos.x < canvas.width + 50 && wpPos.y > -50 && wpPos.y < canvas.height + 50) {
                             ctx.beginPath(); ctx.arc(wpPos.x, wpPos.y, 3, 0, 2*Math.PI);
                             ctx.fillStyle = getAltitudeColor(wp.alt); ctx.fill();
@@ -178,7 +184,7 @@ function drawFlights() {
                         prevPos = wpPos; prevAlt = wp.alt;
                     }
 
-                    if (prevPos) {
+                    if (prevPos && (prevPos.x !== planePos.x || prevPos.y !== planePos.y)) {
                         ctx.beginPath(); ctx.moveTo(prevPos.x, prevPos.y); ctx.lineTo(planePos.x, planePos.y);
                         const finalGrad = ctx.createLinearGradient(prevPos.x, prevPos.y, planePos.x, planePos.y);
                         finalGrad.addColorStop(0, getAltitudeColor(prevAlt));
@@ -186,7 +192,6 @@ function drawFlights() {
                         ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
                     }
                 } 
-                // Eğer API'den henüz uçuş planı çekilmediyse sadece normal arkasından çıkan izi çiz
                 else if (f.history.length > 2) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
                     for (let i = 1; i < f.history.length - 1; i++) {
@@ -197,11 +202,13 @@ function drawFlights() {
                         const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
                         const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
 
-                        ctx.beginPath(); ctx.moveTo(mid1.x, mid1.y); ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
-                        const grad = ctx.createLinearGradient(mid1.x, mid1.y, mid2.x, mid2.y);
-                        grad.addColorStop(0, getAltitudeColor(f.history[i-1].alt));
-                        grad.addColorStop(1, getAltitudeColor(f.history[i].alt));
-                        ctx.strokeStyle = grad; ctx.globalAlpha = 0.8; ctx.stroke();
+                        if (mid1.x !== mid2.x || mid1.y !== mid2.y) {
+                            ctx.beginPath(); ctx.moveTo(mid1.x, mid1.y); ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+                            const grad = ctx.createLinearGradient(mid1.x, mid1.y, mid2.x, mid2.y);
+                            grad.addColorStop(0, getAltitudeColor(f.history[i-1].alt));
+                            grad.addColorStop(1, getAltitudeColor(f.history[i].alt));
+                            ctx.strokeStyle = grad; ctx.globalAlpha = 0.8; ctx.stroke();
+                        }
                     }
                     const lastP = f.history[f.history.length - 1];
                     const prevP = f.history[f.history.length - 2];
@@ -209,14 +216,16 @@ function drawFlights() {
                     const p2 = map.latLngToContainerPoint([lastP.lat, lastP.lng + offset]);
                     const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
 
-                    ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.quadraticCurveTo(p2.x, p2.y, planePos.x, planePos.y);
-                    const finalGrad = ctx.createLinearGradient(mid.x, mid.y, planePos.x, planePos.y);
-                    finalGrad.addColorStop(0, getAltitudeColor(lastP.alt));
-                    finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
-                    ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
+                    if (mid.x !== planePos.x || mid.y !== planePos.y) {
+                        ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.quadraticCurveTo(p2.x, p2.y, planePos.x, planePos.y);
+                        const finalGrad = ctx.createLinearGradient(mid.x, mid.y, planePos.x, planePos.y);
+                        finalGrad.addColorStop(0, getAltitudeColor(lastP.alt));
+                        finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
+                        ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
+                    }
                 }
 
-                // 2. EĞER ROUTE MODU AÇIKSA UÇAĞIN BURNUNDAN VARIŞA KADAR KESİK ÇİZGİ ÇEK
+                // 2. ROUTE MODU AÇIKSA UÇAĞIN BURNUNDAN VARIŞA KADAR KESİK ÇİZGİ ÇEK
                 if (isRouteMode && f.fullRoute && f.fullRoute.length > 0) {
                     let closestWpIndex = 0; let minWpDist = Infinity;
                     for(let i = 0; i < f.fullRoute.length; i++) {
@@ -225,7 +234,7 @@ function drawFlights() {
                     }
 
                     ctx.beginPath();
-                    ctx.setLineDash([8, 8]); // Kesik çizgi
+                    ctx.setLineDash([8, 8]); 
                     ctx.lineWidth = 2.5;
                     ctx.moveTo(planePos.x, planePos.y);
 
@@ -234,21 +243,21 @@ function drawFlights() {
                         const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
                         ctx.lineTo(wpPos.x, wpPos.y);
 
-                        // Kalan ara noktaların ismini yazdır
-                        if(wp.name) {
+                        if(wp.name && wpPos.x > -50 && wpPos.x < canvas.width + 50 && wpPos.y > -50 && wpPos.y < canvas.height + 50) {
                             ctx.fillStyle = "#fff"; ctx.font = "bold 10px Arial";
-                            ctx.fillText(wp.name, wpPos.x, wpPos.y - 8);
+                            ctx.textAlign = "center"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4;
+                            ctx.fillText(wp.name, wpPos.x, wpPos.y - 8); ctx.shadowBlur = 0;
                         }
                     }
                     ctx.strokeStyle = "#00F5D4"; 
                     ctx.globalAlpha = 0.8;
                     ctx.stroke();
-                    ctx.setLineDash([]); // Diğer çizimleri bozmamak için sıfırla
+                    ctx.setLineDash([]); 
                     ctx.globalAlpha = 1.0;
                 }
             }
 
-            // --- UÇAK İKONU ---
+            // UÇAK İKONU (Etrafındaki daire tamamen kaldırıldı)
             ctx.save();
             ctx.translate(planePos.x, planePos.y);
             ctx.rotate(f.heading * Math.PI / 180);
@@ -279,8 +288,6 @@ drawFlights();
 // 5. TIKLAMA HASSASİYETİ VE BİLGİ KARTI
 // ==========================================
 map.on('click', function(e) {
-    if (e.containerPoint.y < 60) return; 
-
     let clicked = null; 
     let minDistance = 50; 
     
@@ -295,8 +302,15 @@ map.on('click', function(e) {
     
     if (clicked) { 
         selectedFlightId = clicked.id; 
+        
+        // DÜZELTME: Verileri hemen basarak bilgi kartının boş gelmesini engelle
+        document.getElementById('ui-alt').innerText = Math.round(clicked.altitude).toLocaleString() + " ft";
+        document.getElementById('ui-speed').innerText = Math.round(clicked.speed) + " kts";
+        document.getElementById('ui-heading').innerText = Math.round(clicked.heading) + "°";
+        document.getElementById('ui-server').innerText = clicked.serverName;
+        
         updateInfoPanel(clicked, true); 
-        // BİLGİ KARTINI (PANELİ) AÇIYOR
+        updateCalculatedData(clicked);
         document.getElementById('flight-info-panel').classList.add('active'); 
     } else { closeInfoPanel(); }
 });
@@ -322,7 +336,6 @@ function toggleRoute() {
         btn.classList.add("active-btn");
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><path d="M9 18l6-6-6-6"/></svg> Route On';
         
-        // Rota moduna geçince uçağı ve varış noktasını ekrana sığdır
         if(selectedFlightId && flights[selectedFlightId].fullRoute && flights[selectedFlightId].fullRoute.length > 0) {
             const r = flights[selectedFlightId].fullRoute;
             const origin = [r[0].lat, r[0].lng];
@@ -359,14 +372,12 @@ function updateCalculatedData(f) {
     const origin = f.fullRoute[0];
     const dest = f.fullRoute[f.fullRoute.length - 1];
     
-    // Mesafe Hesaplamaları
     const flownDist = getDistanceNM(origin.lat, origin.lng, f.lat, f.lng);
     const remainingDist = getDistanceNM(f.lat, f.lng, dest.lat, dest.lng);
     
     document.getElementById('ui-flown').innerText = Math.round(flownDist) + " nm";
     document.getElementById('ui-remaining').innerText = Math.round(remainingDist) + " nm";
     
-    // Zaman Hesaplamaları (Hız 50 kts üzerindeyse)
     if (f.speed > 50) {
         const now = new Date();
         const remainingHours = remainingDist / f.speed;
@@ -381,7 +392,6 @@ function updateCalculatedData(f) {
         document.getElementById('ui-dep-time').innerText = "N/A";
     }
     
-    // Sonraki Ara Nokta Bulma
     let closestWpIndex = 0; let minWpDist = Infinity;
     for(let i = 0; i < f.fullRoute.length; i++) {
         const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2);
@@ -390,7 +400,6 @@ function updateCalculatedData(f) {
     const nextWp = f.fullRoute[closestWpIndex + 1] || f.fullRoute[f.fullRoute.length - 1];
     document.getElementById('ui-next-wp').innerText = nextWp ? nextWp.name : "N/A";
     
-    // Progress Bar
     const totalDist = flownDist + remainingDist;
     let progress = (flownDist / totalDist) * 100;
     if(progress > 100) progress = 100;
@@ -417,8 +426,6 @@ function updateInfoPanel(f, requestDetails) {
     if (requestDetails) {
         document.getElementById('ui-origin').innerHTML = '<span class="loading">Loading...</span>';
         document.getElementById('ui-dest').innerHTML = '<span class="loading">Loading...</span>';
-        
-        // BACKEND'DEN UÇUŞ PLANINI (ROTAYI) ÇEKMESİ İÇİN İSTEK GÖNDERİYOR
         socket.emit('requestFlightDetails', { sessionId: f.sessionId, flightId: f.id });
     }
 }
