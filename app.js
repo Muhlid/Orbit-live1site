@@ -7,7 +7,6 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_D
 const canvas = document.getElementById('flight-canvas');
 const ctx = canvas.getContext('2d');
 
-// DÜZELTME: Canvas boyutu tüm pencereye değil, sadece harita kabına göre ayarlandı (60px tıklama kaymasını çözer)
 function resizeCanvas() { 
     const container = document.getElementById('map-container');
     canvas.width = container.clientWidth; 
@@ -128,7 +127,6 @@ function drawFlights() {
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
 
-        // DÜZELTME: Route modu açıksa diğer uçakları tamamen gizle
         if (isRouteMode && selectedFlightId !== f.id) return;
 
         f.lat += (f.targetLat - f.lat) * 0.04;
@@ -140,10 +138,8 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50) return;
 
-            // SADECE SEÇİLİ UÇAĞIN İRTİFA ÇİZGİSİ VE ROTA
             if (selectedFlightId === f.id) {
                 
-                // 1. Kalkıştan uçağa kadar (veya uçuş planı yoksa arkadaki kısa izi) Renkli İrtifa Çizgisi
                 if (f.fullRoute && f.fullRoute.length > 0) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
                     
@@ -159,7 +155,6 @@ function drawFlights() {
                         const wp = f.fullRoute[i];
                         const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
                         
-                        // DÜZELTME: Aynı noktadaysa gradient çizimini atla (Çökmeyi engeller)
                         if (prevPos && (prevPos.x !== wpPos.x || prevPos.y !== wpPos.y)) {
                             ctx.beginPath();
                             ctx.moveTo(prevPos.x, prevPos.y);
@@ -225,7 +220,6 @@ function drawFlights() {
                     }
                 }
 
-                // 2. ROUTE MODU AÇIKSA UÇAĞIN BURNUNDAN VARIŞA KADAR KESİK ÇİZGİ ÇEK
                 if (isRouteMode && f.fullRoute && f.fullRoute.length > 0) {
                     let closestWpIndex = 0; let minWpDist = Infinity;
                     for(let i = 0; i < f.fullRoute.length; i++) {
@@ -257,14 +251,12 @@ function drawFlights() {
                 }
             }
 
-            // UÇAK İKONU (Etrafındaki daire tamamen kaldırıldı)
             ctx.save();
             ctx.translate(planePos.x, planePos.y);
             ctx.rotate(f.heading * Math.PI / 180);
             ctx.drawImage(planeImg, -14, -14, 28, 28);
             ctx.restore();
 
-            // YAZILAR
             if (userLabel !== "NONE") {
                 let text = "";
                 if (userLabel === "CALLSIGN") text = f.callsign;
@@ -284,9 +276,6 @@ function drawFlights() {
 }
 drawFlights();
 
-// ==========================================
-// 5. TIKLAMA HASSASİYETİ VE BİLGİ KARTI
-// ==========================================
 map.on('click', function(e) {
     let clicked = null; 
     let minDistance = 50; 
@@ -303,7 +292,6 @@ map.on('click', function(e) {
     if (clicked) { 
         selectedFlightId = clicked.id; 
         
-        // DÜZELTME: Verileri hemen basarak bilgi kartının boş gelmesini engelle
         document.getElementById('ui-alt').innerText = Math.round(clicked.altitude).toLocaleString() + " ft";
         document.getElementById('ui-speed').innerText = Math.round(clicked.speed) + " kts";
         document.getElementById('ui-heading').innerText = Math.round(clicked.heading) + "°";
