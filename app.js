@@ -269,25 +269,46 @@ function drawFlights() {
 drawFlights();
 
 // ==========================================
-// 5. UÇAK TIKLAMA VE BİLGİ KARTI
+// 5. TIKLAMA HASSASİYETİ VE KART DOLDURMA
 // ==========================================
 map.on('click', function(e) {
     if (e.containerPoint.y < 60) return; 
 
-    let clickedFlt = null; let minDistance = 50; 
-    
+    let clickedFlt = null; let clickedAtc = null; let clickedApt = null;
+    let minDFlt = 45; let minDAtc = 30; let minDApt = 30;
+
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
         [-360, 0, 360].forEach(offset => {
             const pos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
-            if (dist < minDistance) { minDistance = dist; clickedFlt = f; }
+            if (dist < minDFlt) { minDFlt = dist; clickedFlt = f; }
         });
     });
     
-    if (clickedFlt) { 
-        closeInfoPanel();
-        selectedFlightId = clickedFlt.id; 
+    if (!clickedFlt && showATC) {
+        atcData.forEach(a => {
+            if (currentServerFilter !== "ALL" && a.serverName !== currentServerFilter) return;
+            const pos = map.latLngToContainerPoint([a.latitude, a.longitude]);
+            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow((pos.y - 6) - e.containerPoint.y, 2));
+            if (dist < minDAtc) { minDAtc = dist; clickedAtc = a; }
+        });
+    }
+
+    if (!clickedFlt && !clickedAtc && showAirports) {
+        airportsData.forEach(ap => {
+            if(!ap.has3D) return;
+            const pos = map.latLngToContainerPoint([ap.latitude, ap.longitude]);
+            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
+            if (dist < minDApt) { minDApt = dist; clickedApt = ap; }
+        });
+    }
+
+    // Önceki açık kartları temizle (flickering engelle)
+    document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
+
+    if (clickedFlt) {
+        selectedFlightId = clickedFlt.id; selectedAtcId = null; selectedAptId = null;
         
         document.getElementById('ui-callsign').innerText = clickedFlt.callsign || "Unknown";
         document.getElementById('ui-aircraft').innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
@@ -311,9 +332,73 @@ map.on('click', function(e) {
                 }
             }).catch(()=>{});
 
-        const panel = document.getElementById('flight-info-panel');
-        panel.classList.remove('hidden'); panel.classList.add('active'); 
+        document.getElementById('flight-info-panel').classList.remove('hidden');
+        document.getElementById('flight-info-panel').classList.add('active'); 
     } 
+    // --- YENİ 3D HAVALİMANI KARTI ---
+    else if (clickedApt || clickedAtc) {
+        // Eğer Kuleye (ATC) tıklandıysa, o kuleyi barındıran havalimanı verisini (clickedApt) buluruz.
+        if (clickedAtc && !clickedApt) {
+            clickedApt = airportsData.find(ap => ap.icao === clickedAtc.airportName) || {
+                icao: clickedAtc.airportName, name: "Airport", city: "Unknown", elevation: 0
+            };
+        }
+
+        selectedAptId = clickedApt.icao; selectedFlightId = null; selectedAtcId = null;
+        
+        document.getElementById('ui-apt-icao').innerText = clickedApt.icao;
+        document.getElementById('ui-apt-name').innerText = clickedApt.name;
+        document.getElementById('ui-apt-city').innerText = clickedApt.city || "Unknown City";
+        document.getElementById('ui-apt-elev').innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
+        
+        // Trafik Sayacı (Basit bir filtreleme)
+        let inbound = 0, outbound = 0;
+        Object.values(flights).forEach(f => {
+            if (f.fullRoute && f.fullRoute.length > 0) {
+                if (f.fullRoute[0].name === clickedApt.icao) outbound++;
+                if (f.fullRoute[f.fullRoute.length-1].name === clickedApt.icao) inbound++;
+            }
+        });
+        document.getElementById('ui-apt-inbound').innerText = inbound;
+        document.getElementById('ui-apt-outbound').innerText = outbound;
+
+        // ATC Frekanslarını Listele
+        const freqContainer = document.getElementById('ui-apt-frequencies');
+        const activeFreqs = atcData.filter(a => a.airportName === clickedApt.icao && (currentServerFilter === "ALL" || a.serverName === currentServerFilter));
+        
+        if (activeFreqs.length > 0) {
+            freqContainer.innerHTML = '';
+            const types = ["GND","TWR","UNICOM","CLR","APP","DEP","CTR","ATIS"];
+            activeFreqs.forEach(f => {
+                freqContainer.innerHTML += `
+                    <div class="freq-box">
+                        <span class="f-type">${types[f.type] || "ATC"}</span>
+                        <span class="f-user">${f.username || "Controller"}</span>
+                        <span class="f-time">🟢 Active</span>
+                    </div>
+                `;
+            });
+        } else {
+            freqContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">No active frequencies.</div>';
+        }
+
+        // ATIS Çekme
+        document.getElementById('ui-apt-atis').innerText = "ATIS bilgisi yükleniyor...";
+        
+        // Rastgele bir aktif session alıp ATIS soralım (Uzman sunucuyu tercih eder)
+        const sessionToQuery = (activeFreqs.length > 0) ? activeFreqs[0].sessionId : "7e5dcd44-1fb5-49cc-bc2c-a9aab1f6a856"; 
+        
+        fetch(`${DETAILS_API_URL}?type=atis&session=${sessionToQuery}&icao=${clickedApt.icao}`)
+            .then(res => res.json())
+            .then(data => { document.getElementById('ui-apt-atis').innerText = data.atis || "No ATIS available."; })
+            .catch(()=>{ document.getElementById('ui-apt-atis').innerText = "ATIS data unavailable."; });
+
+        document.getElementById('airport-info-panel').classList.remove('hidden');
+        document.getElementById('airport-info-panel').classList.add('active');
+    }
+    else {
+        closeInfoPanel();
+    }
 });
 
 map.on('dragstart', () => { if(isFollowing) toggleFollow(); });
