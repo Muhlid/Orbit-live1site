@@ -1,3 +1,6 @@
+// ==========================================
+// 1. AYARLAR VE HARİTA KURULUMU
+// ==========================================
 const API_URL = "https://orbtlive.vercel.app/api/flights"; 
 const DETAILS_API_URL = "https://orbtlive.vercel.app/api/details"; 
 
@@ -14,16 +17,16 @@ let userColor = "#00F5D4"; let userLabel = "CALLSIGN";
 let showATC = true, showAirports = true, showTracks = true;
 const planeImg = new Image();
 
-// STATIC KATMANLAR (Sıfır kasma için ATC, Havalimanı ve Rotaları Leaflet'e veriyoruz)
+// STATIC KATMANLAR (ATC, Havalimanı ve Rotalar)
 const atcLayer = L.layerGroup().addTo(map);
 const aptLayer = L.layerGroup().addTo(map);
 const trackLayer = L.layerGroup().addTo(map);
 
-// SVG İkonlar
+// KAYMA SORUNU ÇÖZÜMÜ: iconAnchor ayarları [12,12] ve [8,8] yapılarak haritaya tam ortalarından çivilendi!
 const atcIconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF007F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L12 22 M8 22L16 22 M12 2A4 4 0 0 0 8 6 M12 2A4 4 0 0 1 16 6 M12 2A8 8 0 0 0 4 10 M12 2A8 8 0 0 1 20 10"/></svg>`;
 const aptIconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E9AAF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>`;
 
-const atcLeafletIcon = L.divIcon({ className: 'custom-map-icon atc-icon', html: atcIconSvg, iconSize: [24,24], iconAnchor: [12,24] });
+const atcLeafletIcon = L.divIcon({ className: 'custom-map-icon atc-icon', html: atcIconSvg, iconSize: [24,24], iconAnchor: [12,12] });
 const aptLeafletIcon = L.divIcon({ className: 'custom-map-icon apt-icon', html: aptIconSvg, iconSize: [16,16], iconAnchor: [8,8] });
 
 function updateSettings() {
@@ -55,7 +58,7 @@ async function fetchFlightData() {
         if (data.airports) airportsData = data.airports;
         if (data.tracks) tracksData = data.tracks;
 
-        renderStaticData(); // Statik verileri Leaflet ile çiz
+        renderStaticData(); 
 
         if (data.result) {
             const uniqueServers = [...new Set(data.result.map(f => f.serverName || f.sessionId))];
@@ -108,6 +111,8 @@ function renderStaticData() {
         airportsData.forEach(ap => {
             if(!ap.has3D) return;
             const marker = L.marker([ap.latitude, ap.longitude], {icon: aptLeafletIcon}).addTo(aptLayer);
+            
+            // KAPANMA HATASI ÇÖZÜMÜ: L.DomEvent.stopPropagation(e) ile harita tıklamasını iptal ediyoruz
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 closeInfoPanel();
@@ -122,7 +127,10 @@ function renderStaticData() {
 
     if (showATC && !isRouteMode) {
         atcData.forEach(atc => {
+            if (currentServerFilter !== "ALL" && atc.serverName && atc.serverName !== currentServerFilter) return;
             const marker = L.marker([atc.latitude, atc.longitude], {icon: atcLeafletIcon}).addTo(atcLayer);
+            
+            // KAPANMA HATASI ÇÖZÜMÜ: L.DomEvent.stopPropagation(e)
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 closeInfoPanel();
@@ -155,7 +163,7 @@ function renderServerButtons() {
     container.innerHTML = html;
 }
 
-function setServerFilter(srv) { currentServerFilter = srv; renderServerButtons(); closeInfoPanel(); }
+function setServerFilter(srv) { currentServerFilter = srv; renderServerButtons(); closeInfoPanel(); renderStaticData(); }
 
 function getDistanceNM(lat1, lon1, lat2, lon2) {
     const R = 3440.1; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -172,7 +180,7 @@ function matchesFilters(f) {
 }
 
 // ==========================================
-// 4. CANVAS SADECE UÇAKLARI ÇİZER (Sıfır Kasma)
+// 4. CANVAS SADECE UÇAKLARI ÇİZER
 // ==========================================
 function drawFlights() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -188,6 +196,7 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50) return;
 
+            // RENKLİ İRTİFA ÇİZGİSİ (SADECE SEÇİLİ UÇAKTA)
             if (selectedFlightId === f.id) {
                 if (f.fullRoute && f.fullRoute.length > 0) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
@@ -239,6 +248,7 @@ function drawFlights() {
                     }
                 }
 
+                // ROTA (ROUTE) KESİK ÇİZGİ
                 if (isRouteMode && f.fullRoute && f.fullRoute.length > 0) {
                     let closestIdx = 0; let minD = Infinity;
                     for(let i=0; i<f.fullRoute.length; i++) { const d = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2); if(d<minD) { minD=d; closestIdx=i; } }
@@ -266,49 +276,28 @@ function drawFlights() {
     });
     requestAnimationFrame(drawFlights);
 }
-drawFlights();
 
 // ==========================================
-// 5. TIKLAMA HASSASİYETİ VE KART DOLDURMA
+// 5. UÇAK TIKLAMA VE BİLGİ KARTI
 // ==========================================
+// Uçağa tıklamak için sadece harita tıklaması (ATC ve 3D Havalimanları yukarıda Leaflet Marker ile yönetiliyor)
 map.on('click', function(e) {
     if (e.containerPoint.y < 60) return; 
 
-    let clickedFlt = null; let clickedAtc = null; let clickedApt = null;
-    let minDFlt = 45; let minDAtc = 30; let minDApt = 30;
-
+    let clickedFlt = null; let minDistance = 50; 
+    
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
         [-360, 0, 360].forEach(offset => {
             const pos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
-            if (dist < minDFlt) { minDFlt = dist; clickedFlt = f; }
+            if (dist < minDistance) { minDistance = dist; clickedFlt = f; }
         });
     });
-    
-    if (!clickedFlt && showATC) {
-        atcData.forEach(a => {
-            if (currentServerFilter !== "ALL" && a.serverName !== currentServerFilter) return;
-            const pos = map.latLngToContainerPoint([a.latitude, a.longitude]);
-            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow((pos.y - 6) - e.containerPoint.y, 2));
-            if (dist < minDAtc) { minDAtc = dist; clickedAtc = a; }
-        });
-    }
 
-    if (!clickedFlt && !clickedAtc && showAirports) {
-        airportsData.forEach(ap => {
-            if(!ap.has3D) return;
-            const pos = map.latLngToContainerPoint([ap.latitude, ap.longitude]);
-            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
-            if (dist < minDApt) { minDApt = dist; clickedApt = ap; }
-        });
-    }
-
-    // Önceki açık kartları temizle (flickering engelle)
-    document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
-
-    if (clickedFlt) {
-        selectedFlightId = clickedFlt.id; selectedAtcId = null; selectedAptId = null;
+    if (clickedFlt) { 
+        closeInfoPanel(); // Diğerlerini kapat
+        selectedFlightId = clickedFlt.id; 
         
         document.getElementById('ui-callsign').innerText = clickedFlt.callsign || "Unknown";
         document.getElementById('ui-aircraft').innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
@@ -332,71 +321,9 @@ map.on('click', function(e) {
                 }
             }).catch(()=>{});
 
-        document.getElementById('flight-info-panel').classList.remove('hidden');
-        document.getElementById('flight-info-panel').classList.add('active'); 
-    } 
-    // --- YENİ 3D HAVALİMANI KARTI ---
-    else if (clickedApt || clickedAtc) {
-        // Eğer Kuleye (ATC) tıklandıysa, o kuleyi barındıran havalimanı verisini (clickedApt) buluruz.
-        if (clickedAtc && !clickedApt) {
-            clickedApt = airportsData.find(ap => ap.icao === clickedAtc.airportName) || {
-                icao: clickedAtc.airportName, name: "Airport", city: "Unknown", elevation: 0
-            };
-        }
-
-        selectedAptId = clickedApt.icao; selectedFlightId = null; selectedAtcId = null;
-        
-        document.getElementById('ui-apt-icao').innerText = clickedApt.icao;
-        document.getElementById('ui-apt-name').innerText = clickedApt.name;
-        document.getElementById('ui-apt-city').innerText = clickedApt.city || "Unknown City";
-        document.getElementById('ui-apt-elev').innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
-        
-        // Trafik Sayacı (Basit bir filtreleme)
-        let inbound = 0, outbound = 0;
-        Object.values(flights).forEach(f => {
-            if (f.fullRoute && f.fullRoute.length > 0) {
-                if (f.fullRoute[0].name === clickedApt.icao) outbound++;
-                if (f.fullRoute[f.fullRoute.length-1].name === clickedApt.icao) inbound++;
-            }
-        });
-        document.getElementById('ui-apt-inbound').innerText = inbound;
-        document.getElementById('ui-apt-outbound').innerText = outbound;
-
-        // ATC Frekanslarını Listele
-        const freqContainer = document.getElementById('ui-apt-frequencies');
-        const activeFreqs = atcData.filter(a => a.airportName === clickedApt.icao && (currentServerFilter === "ALL" || a.serverName === currentServerFilter));
-        
-        if (activeFreqs.length > 0) {
-            freqContainer.innerHTML = '';
-            const types = ["GND","TWR","UNICOM","CLR","APP","DEP","CTR","ATIS"];
-            activeFreqs.forEach(f => {
-                freqContainer.innerHTML += `
-                    <div class="freq-box">
-                        <span class="f-type">${types[f.type] || "ATC"}</span>
-                        <span class="f-user">${f.username || "Controller"}</span>
-                        <span class="f-time">🟢 Active</span>
-                    </div>
-                `;
-            });
-        } else {
-            freqContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">No active frequencies.</div>';
-        }
-
-        // ATIS Çekme
-        document.getElementById('ui-apt-atis').innerText = "ATIS bilgisi yükleniyor...";
-        
-        // Rastgele bir aktif session alıp ATIS soralım (Uzman sunucuyu tercih eder)
-        const sessionToQuery = (activeFreqs.length > 0) ? activeFreqs[0].sessionId : "7e5dcd44-1fb5-49cc-bc2c-a9aab1f6a856"; 
-        
-        fetch(`${DETAILS_API_URL}?type=atis&session=${sessionToQuery}&icao=${clickedApt.icao}`)
-            .then(res => res.json())
-            .then(data => { document.getElementById('ui-apt-atis').innerText = data.atis || "No ATIS available."; })
-            .catch(()=>{ document.getElementById('ui-apt-atis').innerText = "ATIS data unavailable."; });
-
-        document.getElementById('airport-info-panel').classList.remove('hidden');
-        document.getElementById('airport-info-panel').classList.add('active');
-    }
-    else {
+        const panel = document.getElementById('flight-info-panel');
+        panel.classList.remove('hidden'); panel.classList.add('active'); 
+    } else {
         closeInfoPanel();
     }
 });
@@ -416,7 +343,7 @@ function toggleRoute() {
             const r = flights[selectedFlightId].fullRoute;
             map.fitBounds([[r[0].lat, r[0].lng], [r[r.length-1].lat, r[r.length-1].lng], [flights[selectedFlightId].lat, flights[selectedFlightId].lng]], { padding: [50, 50] });
         }
-        renderStaticData(); // ATC/Airports gizle
+        renderStaticData(); // Rota modunda ATC/Airports gizle
     } else { btn.classList.remove("active-btn"); renderStaticData(); }
 }
 
