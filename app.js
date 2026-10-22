@@ -17,12 +17,12 @@ let userColor = "#00F5D4"; let userLabel = "CALLSIGN";
 let showATC = true, showAirports = true, showTracks = true;
 const planeImg = new Image();
 
-// STATIC KATMANLAR (ATC, Havalimanı ve Rotalar)
+// KATMANLAR
 const atcLayer = L.layerGroup().addTo(map);
 const aptLayer = L.layerGroup().addTo(map);
 const trackLayer = L.layerGroup().addTo(map);
 
-// KAYMA SORUNU ÇÖZÜMÜ: iconAnchor ayarları [12,12] ve [8,8] yapılarak haritaya tam ortalarından çivilendi!
+// İKONLAR (Anchor tam ortalandı, zoomda kaymaz)
 const atcIconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF007F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L12 22 M8 22L16 22 M12 2A4 4 0 0 0 8 6 M12 2A4 4 0 0 1 16 6 M12 2A8 8 0 0 0 4 10 M12 2A8 8 0 0 1 20 10"/></svg>`;
 const aptIconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E9AAF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>`;
 
@@ -44,8 +44,12 @@ function updateStaticLayers() {
     renderStaticData();
 }
 
+// ==========================================
+// 2. VERCEL API VERİ ÇEKİMİ VE SUNUCULAR
+// ==========================================
 let flights = {}, atcData = [], airportsData = [], tracksData = [];
-let selectedFlightId = null, knownServers = [], currentServerFilter = "ALL";
+let selectedFlightId = null, selectedAtcId = null, selectedAptId = null;
+let knownServers = [], currentServerFilter = "ALL";
 let isFollowing = false, isRouteMode = false;
 
 async function fetchFlightData() {
@@ -61,11 +65,18 @@ async function fetchFlightData() {
         renderStaticData(); 
 
         if (data.result) {
-            const uniqueServers = [...new Set(data.result.map(f => f.serverName || f.sessionId))];
-            if (JSON.stringify(uniqueServers) !== JSON.stringify(knownServers)) {
-                knownServers = uniqueServers;
-                renderServerButtons();
+            // Sunucu Butonları Mantığı
+            const serverCounts = {};
+            data.result.forEach(f => {
+                const sName = f.serverName || "Unknown Server";
+                serverCounts[sName] = (serverCounts[sName] || 0) + 1;
+            });
+            
+            const srvKeys = Object.keys(serverCounts).sort(); // Alfabetik sırala (Casual, Expert, Training)
+            if (JSON.stringify(srvKeys) !== JSON.stringify(knownServers)) {
+                knownServers = srvKeys;
             }
+            renderServerButtons(serverCounts);
 
             const currentIds = new Set();
             data.result.forEach(f => {
@@ -74,25 +85,70 @@ async function fetchFlightData() {
                     Object.assign(flights[f.flightId], { targetLat: f.latitude, targetLng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed });
                     const history = flights[f.flightId].history;
                     const lastP = history[history.length - 1];
-                    if (lastP.lat !== f.latitude || lastP.lng !== f.longitude) { history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude }); if (history.length > 50) history.shift(); }
+                    if (lastP && (lastP.lat !== f.latitude || lastP.lng !== f.longitude)) { 
+                        history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude }); 
+                        if (history.length > 50) history.shift(); 
+                    }
                 } else {
                     flights[f.flightId] = {
-                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName || f.sessionId, aircraftName: f.aircraftName, liveryName: f.liveryName,
+                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName, aircraftName: f.aircraftName, liveryName: f.liveryName,
                         targetLat: f.latitude, targetLng: f.longitude, lat: f.latitude, lng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed, history: [{ lat: f.latitude, lng: f.longitude, alt: f.altitude }], fullRoute: []
                     };
                 }
             });
 
             Object.keys(flights).forEach(id => {
-                if (!currentIds.has(id)) { delete flights[id]; if (selectedFlightId === id) closeInfoPanel(); }
+                if (!currentIds.has(id)) { 
+                    delete flights[id]; 
+                    if (selectedFlightId === id) closeInfoPanel(); 
+                }
             });
         }
-    } catch(e) {}
+    } catch(e) { console.error("Fetch error:", e); }
 }
 
 fetchFlightData();
 setInterval(fetchFlightData, 12000);
 
+function renderServerButtons(counts) {
+    const container = document.getElementById("server-buttons");
+    if(!container) return;
+    
+    let html = `<button class="server-btn ${currentServerFilter === 'ALL' ? 'active' : ''}" onclick="setServerFilter('ALL')">All</button>`;
+    
+    const colors = { "Expert Server": "var(--server-expert)", "Training Server": "var(--server-training)", "Casual Server": "var(--server-casual)" };
+
+    knownServers.forEach(srv => {
+        const color = colors[srv] || "#fff";
+        const count = counts ? counts[srv] : 0;
+        html += `<button class="server-btn ${currentServerFilter === srv ? 'active' : ''}" onclick="setServerFilter('${srv}')">
+                    <div class="server-dot" style="background:${color}; width:8px; height:8px; border-radius:50%; box-shadow:0 0 8px ${color};"></div>
+                    ${srv.split(' ')[0]} ${count}
+                 </button>`;
+    });
+    container.innerHTML = html;
+}
+
+function setServerFilter(srv) { 
+    currentServerFilter = srv; 
+    renderServerButtons(); 
+    closeInfoPanel(); 
+    renderStaticData();
+}
+
+// HATA ÇÖZÜLDÜ: getElementById null hatası engellendi
+function matchesFilters(f) {
+    const termEl = document.getElementById('topSearch');
+    const term = termEl ? termEl.value.trim().toLowerCase() : "";
+    
+    if (currentServerFilter !== "ALL" && f.serverName !== currentServerFilter) return false;
+    if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return false;
+    return true;
+}
+
+// ==========================================
+// 3. STATİK İKON ÇİZİMLERİ VE KAPANMA HATASI ÇÖZÜMÜ
+// ==========================================
 function parseOceanicWp(wpStr) { const m = wpStr.match(/^(\d{2})\/(\d{2})$/); return m ? {lat: parseInt(m[1]), lng: -parseInt(m[2])} : null; }
 
 function renderStaticData() {
@@ -109,18 +165,13 @@ function renderStaticData() {
 
     if (showAirports && !isRouteMode) {
         airportsData.forEach(ap => {
-            if(!ap.has3D) return;
+            if(!ap.has_3d && !ap.has3D) return;
             const marker = L.marker([ap.latitude, ap.longitude], {icon: aptLeafletIcon}).addTo(aptLayer);
             
-            // KAPANMA HATASI ÇÖZÜMÜ: L.DomEvent.stopPropagation(e) ile harita tıklamasını iptal ediyoruz
             marker.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                closeInfoPanel();
-                document.getElementById('ui-apt-icao').innerText = ap.icao;
-                document.getElementById('ui-apt-name').innerText = ap.name;
-                document.getElementById('ui-apt-city').innerText = ap.city || "Unknown City";
-                document.getElementById('ui-apt-elev').innerText = ap.elevation ? ap.elevation + " ft" : "---";
-                const p = document.getElementById('airport-info-panel'); p.classList.remove('hidden'); p.classList.add('active');
+                // Leaflet ikonuna tıklandığında alttaki haritaya (map.click) gitmesini engeller! Kapanma hatasının KESİN ÇÖZÜMÜ
+                L.DomEvent.stopPropagation(e); 
+                openAirportPanel(ap);
             });
         });
     }
@@ -130,59 +181,25 @@ function renderStaticData() {
             if (currentServerFilter !== "ALL" && atc.serverName && atc.serverName !== currentServerFilter) return;
             const marker = L.marker([atc.latitude, atc.longitude], {icon: atcLeafletIcon}).addTo(atcLayer);
             
-            // KAPANMA HATASI ÇÖZÜMÜ: L.DomEvent.stopPropagation(e)
             marker.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                closeInfoPanel();
-                const types = ["Ground","Tower","Unicom","Clearance","Approach","Departure","Center","ATIS"];
-                document.getElementById('ui-atc-icao').innerText = atc.airportName || "CENTER";
-                document.getElementById('ui-atc-type').innerText = types[atc.type] || "ATC";
-                document.getElementById('ui-atc-user').innerText = `Controller: ${atc.username || "Anonymous"}`;
-                document.getElementById('ui-atc-atis').innerText = "Fetching ATIS...";
-                
-                fetch(`${DETAILS_API_URL}?type=atis&session=${atc.sessionId}&icao=${atc.airportName}`)
-                    .then(res => res.json())
-                    .then(data => { document.getElementById('ui-atc-atis').innerText = data.atis || "No ATIS available."; })
-                    .catch(()=>{});
-                
-                const p = document.getElementById('atc-info-panel'); p.classList.remove('hidden'); p.classList.add('active');
+                L.DomEvent.stopPropagation(e); 
+                openAtcPanel(atc);
             });
         });
     }
 }
 
-function renderServerButtons() {
-    const container = document.getElementById("server-buttons");
-    if(!container) return;
-    let html = `<button class="server-btn ${currentServerFilter === 'ALL' ? 'active' : ''}" onclick="setServerFilter('ALL')">All Servers</button>`;
-    knownServers.forEach(srv => {
-        if(srv !== "Live Server") {
-            html += `<button class="server-btn ${currentServerFilter === srv ? 'active' : ''}" onclick="setServerFilter('${srv}')">${srv}</button>`;
-        }
-    });
-    container.innerHTML = html;
-}
-
-function setServerFilter(srv) { currentServerFilter = srv; renderServerButtons(); closeInfoPanel(); renderStaticData(); }
-
-function getDistanceNM(lat1, lon1, lat2, lon2) {
-    const R = 3440.1; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-function getAltitudeColor(alt) { if (alt <= 5000) return '#FFFFFF'; if (alt <= 10000) return '#FFEA00'; if (alt <= 20000) return '#00FF00'; if (alt <= 30000) return '#00bbff'; if (alt <= 39999) return '#A200FF'; return '#FF0000'; }
-
-function matchesFilters(f) {
-    const term = document.getElementById('topSearch').value.trim().toLowerCase();
-    if (currentServerFilter !== "ALL" && f.serverName !== currentServerFilter) return false;
-    if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return false;
-    return true;
-}
-
 // ==========================================
-// 4. CANVAS SADECE UÇAKLARI ÇİZER
+// 4. CANVAS UÇAK VE ROTA ÇİZİM MOTORU
 // ==========================================
-function drawFlights() {
+function getAltitudeColor(alt) {
+    if (alt <= 5000) return '#FFFFFF'; if (alt <= 10000) return '#FFEA00'; if (alt <= 20000) return '#00FF00'; if (alt <= 30000) return '#00bbff'; if (alt <= 39999) return '#A200FF'; return '#FF0000'; 
+}
+
+map.on('move', drawElements);
+map.on('zoom', drawElements);
+
+function drawElements() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (isFollowing && selectedFlightId && flights[selectedFlightId]) map.panTo([flights[selectedFlightId].lat, flights[selectedFlightId].lng], { animate: false });
 
@@ -196,13 +213,14 @@ function drawFlights() {
             const planePos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             if (planePos.x < -50 || planePos.x > canvas.width + 50 || planePos.y < -50 || planePos.y > canvas.height + 50) return;
 
-            // RENKLİ İRTİFA ÇİZGİSİ (SADECE SEÇİLİ UÇAKTA)
             if (selectedFlightId === f.id) {
+                // 1. İRTİFA ÇİZGİSİ
                 if (f.fullRoute && f.fullRoute.length > 0) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
                     let closestIdx = 0; let minD = Infinity;
                     for(let i=0; i<f.fullRoute.length; i++) { const d = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2); if(d<minD){minD=d; closestIdx=i;} }
                     let prevPos = null; let prevAlt = null;
+                    
                     for(let i=0; i<=closestIdx; i++) {
                         const wp = f.fullRoute[i]; const wpPos = map.latLngToContainerPoint([wp.lat, wp.lng + offset]);
                         if (prevPos && (prevPos.x !== wpPos.x || prevPos.y !== wpPos.y)) {
@@ -223,32 +241,29 @@ function drawFlights() {
                         finalGrad.addColorStop(0, getAltitudeColor(prevAlt)); finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
                         ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
                     }
-                } else if (f.history.length > 2) {
+                } else if (f.history && f.history.length > 2) {
                     ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 4;
                     for (let i=1; i<f.history.length-1; i++) {
                         const p0 = map.latLngToContainerPoint([f.history[i-1].lat, f.history[i-1].lng + offset]);
                         const p1 = map.latLngToContainerPoint([f.history[i].lat, f.history[i].lng + offset]);
                         const p2 = map.latLngToContainerPoint([f.history[i+1].lat, f.history[i+1].lng + offset]);
                         const mid1 = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2}; const mid2 = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
-                        if (mid1.x !== mid2.x || mid1.y !== mid2.y) {
-                            ctx.beginPath(); ctx.moveTo(mid1.x, mid1.y); ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
-                            const grad = ctx.createLinearGradient(mid1.x, mid1.y, mid2.x, mid2.y);
-                            grad.addColorStop(0, getAltitudeColor(f.history[i-1].alt)); grad.addColorStop(1, getAltitudeColor(f.history[i].alt));
-                            ctx.strokeStyle = grad; ctx.globalAlpha = 0.8; ctx.stroke();
-                        }
+                        
+                        ctx.beginPath(); ctx.moveTo(mid1.x, mid1.y); ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+                        const grad = ctx.createLinearGradient(mid1.x, mid1.y, mid2.x, mid2.y);
+                        grad.addColorStop(0, getAltitudeColor(f.history[i-1].alt)); grad.addColorStop(1, getAltitudeColor(f.history[i].alt));
+                        ctx.strokeStyle = grad; ctx.globalAlpha = 0.8; ctx.stroke();
                     }
                     const lastP = f.history[f.history.length-1]; const prevP = f.history[f.history.length-2];
                     const p1 = map.latLngToContainerPoint([prevP.lat, prevP.lng + offset]); const p2 = map.latLngToContainerPoint([lastP.lat, lastP.lng + offset]);
                     const mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
-                    if (mid.x !== planePos.x || mid.y !== planePos.y) {
-                        ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.quadraticCurveTo(p2.x, p2.y, planePos.x, planePos.y);
-                        const finalGrad = ctx.createLinearGradient(mid.x, mid.y, planePos.x, planePos.y);
-                        finalGrad.addColorStop(0, getAltitudeColor(lastP.alt)); finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
-                        ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
-                    }
+                    ctx.beginPath(); ctx.moveTo(mid.x, mid.y); ctx.quadraticCurveTo(p2.x, p2.y, planePos.x, planePos.y);
+                    const finalGrad = ctx.createLinearGradient(mid.x, mid.y, planePos.x, planePos.y);
+                    finalGrad.addColorStop(0, getAltitudeColor(lastP.alt)); finalGrad.addColorStop(1, getAltitudeColor(f.altitude));
+                    ctx.strokeStyle = finalGrad; ctx.globalAlpha = 1.0; ctx.stroke();
                 }
 
-                // ROTA (ROUTE) KESİK ÇİZGİ
+                // 2. ROTA (KESİK ÇİZGİ)
                 if (isRouteMode && f.fullRoute && f.fullRoute.length > 0) {
                     let closestIdx = 0; let minD = Infinity;
                     for(let i=0; i<f.fullRoute.length; i++) { const d = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2); if(d<minD) { minD=d; closestIdx=i; } }
@@ -274,14 +289,17 @@ function drawFlights() {
             }
         });
     });
-    requestAnimationFrame(drawFlights);
+    requestAnimationFrame(drawElements);
 }
+drawElements();
 
 // ==========================================
-// 5. UÇAK TIKLAMA VE BİLGİ KARTI
+// 5. TIKLAMA HASSASİYETİ VE PANELLER
 // ==========================================
-// Uçağa tıklamak için sadece harita tıklaması (ATC ve 3D Havalimanları yukarıda Leaflet Marker ile yönetiliyor)
+// Haritaya tıklama (SADECE uçakları seçmek veya panelleri kapatmak içindir)
 map.on('click', function(e) {
+    // Tıklanan şey bir Leaflet marker (ATC/Airport) ise harita tıklamasını yoksay!
+    if (e.originalEvent && e.originalEvent.target && e.originalEvent.target.closest('.custom-map-icon')) return; 
     if (e.containerPoint.y < 60) return; 
 
     let clickedFlt = null; let minDistance = 50; 
@@ -296,93 +314,173 @@ map.on('click', function(e) {
     });
 
     if (clickedFlt) { 
-        closeInfoPanel(); // Diğerlerini kapat
-        selectedFlightId = clickedFlt.id; 
-        
-        document.getElementById('ui-callsign').innerText = clickedFlt.callsign || "Unknown";
-        document.getElementById('ui-aircraft').innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
-        document.getElementById('ui-va').innerText = clickedFlt.virtualOrg || "General Aviation";
-        document.getElementById('ui-username').innerText = clickedFlt.username || "Guest Pilot";
-        document.getElementById('ui-alt').innerText = Math.round(clickedFlt.altitude).toLocaleString() + " ft";
-        document.getElementById('ui-speed').innerText = Math.round(clickedFlt.speed) + " kts";
-        document.getElementById('ui-heading').innerText = Math.round(clickedFlt.heading) + "°";
-        
-        document.getElementById('ui-origin').innerHTML = '<span class="loading">Loading...</span>';
-        document.getElementById('ui-dest').innerHTML = '<span class="loading">Loading...</span>';
-        
-        fetch(`${DETAILS_API_URL}?type=flightplan&session=${clickedFlt.sessionId}&flight=${clickedFlt.id}`)
-            .then(res => res.json())
-            .then(data => {
-                if(data.route) {
-                    flights[selectedFlightId].fullRoute = data.route;
-                    document.getElementById('ui-origin').innerText = data.originAirport;
-                    document.getElementById('ui-dest').innerText = data.destinationAirport;
-                    updateCalculatedData(flights[selectedFlightId]);
-                }
-            }).catch(()=>{});
-
-        const panel = document.getElementById('flight-info-panel');
-        panel.classList.remove('hidden'); panel.classList.add('active'); 
+        openFlightPanel(clickedFlt); 
     } else {
         closeInfoPanel();
     }
 });
 
+function openFlightPanel(f) {
+    closeInfoPanel(true); // Animasyonsuz gizle
+    selectedFlightId = f.id; 
+    
+    const elCallsign = document.getElementById('ui-callsign'); if(elCallsign) elCallsign.innerText = f.callsign || "Unknown";
+    const elAircraft = document.getElementById('ui-aircraft'); if(elAircraft) elAircraft.innerText = `${f.aircraftName || "?"} (${f.liveryName || "Unk"})`;
+    const elVa = document.getElementById('ui-va'); if(elVa) elVa.innerText = f.virtualOrg || "General Aviation";
+    const elUser = document.getElementById('ui-username'); if(elUser) elUser.innerText = f.username || "Guest Pilot";
+    const elAlt = document.getElementById('ui-alt'); if(elAlt) elAlt.innerText = Math.round(f.altitude).toLocaleString() + " ft";
+    const elSpd = document.getElementById('ui-speed'); if(elSpd) elSpd.innerText = Math.round(f.speed) + " kts";
+    const elHdg = document.getElementById('ui-heading'); if(elHdg) elHdg.innerText = Math.round(f.heading) + "°";
+    
+    const elOrig = document.getElementById('ui-origin'); if(elOrig) elOrig.innerHTML = '<span class="loading">...</span>';
+    const elDest = document.getElementById('ui-dest'); if(elDest) elDest.innerHTML = '<span class="loading">...</span>';
+    
+    fetch(`${DETAILS_API_URL}?type=flightplan&session=${f.sessionId}&flight=${f.id}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.route) {
+                flights[selectedFlightId].fullRoute = data.route;
+                if(elOrig) elOrig.innerText = data.originAirport;
+                if(elDest) elDest.innerText = data.destinationAirport;
+                updateCalculatedData(flights[selectedFlightId]);
+            }
+        }).catch(()=>{});
+
+    const p = document.getElementById('flight-info-panel');
+    if(p) { p.classList.remove('hidden'); setTimeout(()=> p.classList.add('active'), 10); }
+}
+
+function openAtcPanel(atc) {
+    closeInfoPanel(true);
+    selectedAtcId = atc.frequencyId;
+    const types = ["Ground","Tower","Unicom","Clearance","Approach","Departure","Center","ATIS"];
+    const elIcao = document.getElementById('ui-atc-icao'); if(elIcao) elIcao.innerText = atc.airportName || "CENTER";
+    const elType = document.getElementById('ui-atc-type'); if(elType) elType.innerText = types[atc.type] || "ATC";
+    const elUser = document.getElementById('ui-atc-user'); if(elUser) elUser.innerText = `Controller: ${atc.username || "Anonymous"}`;
+    const elAtis = document.getElementById('ui-atc-atis'); if(elAtis) elAtis.innerText = "Fetching ATIS...";
+    
+    fetch(`${DETAILS_API_URL}?type=atis&session=${atc.sessionId}&icao=${atc.airportName}`)
+        .then(res => res.json())
+        .then(data => { if(elAtis) elAtis.innerText = data.atis || "No ATIS available."; })
+        .catch(()=>{});
+
+    const p = document.getElementById('atc-info-panel');
+    if(p) { p.classList.remove('hidden'); setTimeout(()=> p.classList.add('active'), 10); }
+}
+
+function openAirportPanel(ap) {
+    closeInfoPanel(true);
+    selectedAptId = ap.icao;
+    
+    const elIcao = document.getElementById('ui-apt-icao'); if(elIcao) elIcao.innerText = ap.icao;
+    const elName = document.getElementById('ui-apt-name'); if(elName) elName.innerText = ap.name;
+    const elCity = document.getElementById('ui-apt-city'); if(elCity) elCity.innerText = ap.city || "Unknown City";
+    const elElev = document.getElementById('ui-apt-elev'); if(elElev) elElev.innerText = ap.elevation ? ap.elevation + " ft" : "---";
+    
+    let inbound = 0, outbound = 0;
+    Object.values(flights).forEach(f => {
+        if (f.fullRoute && f.fullRoute.length > 0) {
+            if (f.fullRoute[0].name === ap.icao) outbound++;
+            if (f.fullRoute[f.fullRoute.length-1].name === ap.icao) inbound++;
+        }
+    });
+    const elIn = document.getElementById('ui-apt-inbound'); if(elIn) elIn.innerText = inbound;
+    const elOut = document.getElementById('ui-apt-outbound'); if(elOut) elOut.innerText = outbound;
+
+    const freqContainer = document.getElementById('ui-apt-frequencies');
+    if(freqContainer) {
+        const activeFreqs = atcData.filter(a => a.airportName === ap.icao && (currentServerFilter === "ALL" || a.serverName === currentServerFilter));
+        if (activeFreqs.length > 0) {
+            freqContainer.innerHTML = '';
+            const types = ["GND","TWR","UNICOM","CLR","APP","DEP","CTR","ATIS"];
+            activeFreqs.forEach(f => {
+                freqContainer.innerHTML += `<div class="freq-box"><span class="f-type">${types[f.type] || "ATC"}</span><span class="f-user">${f.username || "Controller"}</span><span class="f-time">🟢 Active</span></div>`;
+            });
+        } else {
+            freqContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">No active frequencies.</div>';
+        }
+    }
+
+    const p = document.getElementById('airport-info-panel');
+    if(p) { p.classList.remove('hidden'); setTimeout(()=> p.classList.add('active'), 10); }
+}
+
 map.on('dragstart', () => { if(isFollowing) toggleFollow(); });
 
 function toggleFollow() {
-    isFollowing = !isFollowing; const btn = document.getElementById("btn-follow");
+    isFollowing = !isFollowing; const btn = document.getElementById("btn-follow"); if(!btn) return;
     if(isFollowing) btn.classList.add("active-btn"); else btn.classList.remove("active-btn");
 }
 
 function toggleRoute() {
-    isRouteMode = !isRouteMode; const btn = document.getElementById("btn-route");
+    isRouteMode = !isRouteMode; const btn = document.getElementById("btn-route"); if(!btn) return;
     if(isRouteMode) { 
         btn.classList.add("active-btn"); 
-        if(selectedFlightId && flights[selectedFlightId].fullRoute && flights[selectedFlightId].fullRoute.length > 0) {
+        if(selectedFlightId && flights[selectedFlightId] && flights[selectedFlightId].fullRoute && flights[selectedFlightId].fullRoute.length > 0) {
             const r = flights[selectedFlightId].fullRoute;
             map.fitBounds([[r[0].lat, r[0].lng], [r[r.length-1].lat, r[r.length-1].lng], [flights[selectedFlightId].lat, flights[selectedFlightId].lng]], { padding: [50, 50] });
         }
-        renderStaticData(); // Rota modunda ATC/Airports gizle
+        renderStaticData(); 
     } else { btn.classList.remove("active-btn"); renderStaticData(); }
 }
 
 setInterval(() => {
     if (selectedFlightId && flights[selectedFlightId]) {
-        updateCalculatedData(flights[selectedFlightId]);
-        document.getElementById('ui-alt').innerText = Math.round(flights[selectedFlightId].altitude).toLocaleString() + " ft";
-        document.getElementById('ui-speed').innerText = Math.round(flights[selectedFlightId].speed) + " kts";
-        document.getElementById('ui-heading').innerText = Math.round(flights[selectedFlightId].heading) + "°";
+        const f = flights[selectedFlightId];
+        updateCalculatedData(f);
+        const altEl = document.getElementById('ui-alt'); if(altEl) altEl.innerText = Math.round(f.altitude).toLocaleString() + " ft";
+        const spdEl = document.getElementById('ui-speed'); if(spdEl) spdEl.innerText = Math.round(f.speed) + " kts";
+        const hdgEl = document.getElementById('ui-heading'); if(hdgEl) hdgEl.innerText = Math.round(f.heading) + "°";
     }
 }, 1000);
 
+function getDistanceNM(lat1, lon1, lat2, lon2) {
+    const R = 3440.1; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 function updateCalculatedData(f) {
-    if(!f.fullRoute || f.fullRoute.length === 0) return;
+    const flownEl = document.getElementById('ui-flown'); const remEl = document.getElementById('ui-remaining');
+    const depEl = document.getElementById('ui-dep-time'); const etaEl = document.getElementById('ui-eta');
+    const nextWpEl = document.getElementById('ui-next-wp'); const progEl = document.getElementById("ui-progress-fill");
+
+    if(!f.fullRoute || f.fullRoute.length === 0) {
+        if(flownEl) flownEl.innerText = "--- nm"; if(remEl) remEl.innerText = "--- nm";
+        if(depEl) depEl.innerText = "---"; if(etaEl) etaEl.innerText = "---";
+        if(nextWpEl) nextWpEl.innerText = "---"; if(progEl) progEl.style.width = "0%";
+        return;
+    }
+    
     const origin = f.fullRoute[0]; const dest = f.fullRoute[f.fullRoute.length - 1];
     const flownDist = getDistanceNM(origin.lat, origin.lng, f.lat, f.lng);
     const remainingDist = getDistanceNM(f.lat, f.lng, dest.lat, dest.lng);
     
-    document.getElementById('ui-flown').innerText = Math.round(flownDist) + " nm";
-    document.getElementById('ui-remaining').innerText = Math.round(remainingDist) + " nm";
+    if(flownEl) flownEl.innerText = Math.round(flownDist) + " nm";
+    if(remEl) remEl.innerText = Math.round(remainingDist) + " nm";
     
     if (f.speed > 50) {
         const now = new Date(); const remainingHours = remainingDist / f.speed;
-        document.getElementById('ui-eta').innerText = new Date(now.getTime() + remainingHours * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        document.getElementById('ui-dep-time').innerText = new Date(now.getTime() - (flownDist / f.speed) * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        if(etaEl) etaEl.innerText = new Date(now.getTime() + remainingHours * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        if(depEl) depEl.innerText = new Date(now.getTime() - (flownDist / f.speed) * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }
     
     let closestWpIndex = 0; let minWpDist = Infinity;
     for(let i=0; i<f.fullRoute.length; i++) { const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2); if(dist<minWpDist) { minWpDist=dist; closestWpIndex=i; } }
     const nextWp = f.fullRoute[closestWpIndex + 1] || dest;
-    document.getElementById('ui-next-wp').innerText = nextWp ? nextWp.name : "N/A";
+    if(nextWpEl) nextWpEl.innerText = nextWp ? nextWp.name : "N/A";
     
     let progress = (flownDist / (flownDist + remainingDist)) * 100;
-    document.getElementById("ui-progress-fill").style.width = (progress > 100 ? 100 : progress) + "%";
+    if(progEl) progEl.style.width = (progress > 100 ? 100 : progress) + "%";
 }
 
-function closeInfoPanel() { 
-    document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
-    setTimeout(() => { document.querySelectorAll('.info-card').forEach(el => el.classList.add('hidden')); }, 400);
+function closeInfoPanel(instant = false) { 
+    document.querySelectorAll('.info-card').forEach(el => {
+        el.classList.remove('active');
+        if(instant) el.classList.add('hidden');
+    });
+    if(!instant) setTimeout(() => { document.querySelectorAll('.info-card').forEach(el => el.classList.add('hidden')); }, 400);
+    
     selectedFlightId = null; selectedAtcId = null; selectedAptId = null;
     if(isFollowing) toggleFollow(); if(isRouteMode) toggleRoute();
 }
