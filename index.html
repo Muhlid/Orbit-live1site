@@ -22,10 +22,6 @@
             <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="applyFilters()">
         </div>
 
-        <select id="serverDropdown" class="glass-select" onchange="applyFilters()">
-            <option value="ALL">All Servers</option>
-        </select>
-
         <button class="glass-btn" onclick="toggleAtcModal()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             <span>ATC List</span>
@@ -41,6 +37,13 @@
             <span>Settings</span>
         </button>
     </header>
+
+    <!-- SAĞ ÜST SUNUCU MENÜSÜ -->
+    <div id="server-selector-container">
+        <div id="server-buttons">
+            <!-- JS tarafından doldurulacak -->
+        </div>
+    </div>
 
     <!-- MAP CONTAINER -->
     <div id="map-container">
@@ -107,22 +110,48 @@
                         <option value="LIVERY">Livery</option>
                     </select>
                 </div>
+                
+                 <div class="filter-group">
+                    <label>REPLAY MODE</label>
+                    <div class="toggle-group">
+                         <span style="font-size: 13px; color: var(--text-muted);">View past flights (Last 3 days / Premium: 7 days) - Coming Soon</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- FLIGHT INFO PANEL -->
+    <!-- FLIGHT INFO PANEL (WAYPOINT STYLE) -->
     <div id="flight-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         
-        <div class="card-header">
-            <div class="header-main">
-                <span id="ui-callsign" class="card-callsign">---</span>
-                <span id="ui-aircraft" class="card-badge">---</span>
+        <!-- Üst Kısım: Fotoğraf ve Havayolu -->
+        <div class="card-hero">
+            <div class="aircraft-image-placeholder">
+                <span style="font-size:40px; color:rgba(255,255,255,0.1);">✈️</span>
             </div>
-            <div id="ui-va" class="card-subtitle">---</div>
+            <div class="hero-details">
+                <span id="ui-callsign" class="card-callsign">---</span>
+                <span id="ui-va" class="card-va">---</span>
+                <span id="ui-aircraft" class="card-aircraft">---</span>
+            </div>
         </div>
 
+        <!-- Pilot Profili -->
+        <div class="pilot-profile-section">
+            <div class="pilot-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span id="ui-username" style="font-weight: bold; font-size: 14px; margin-left: 5px;">---</span>
+            </div>
+            <div class="pilot-stats">
+                 <div class="stat-box"><span class="label">GRADE</span><span id="ui-grade" class="val">---</span></div>
+                 <div class="stat-box"><span class="label">FLIGHT TIME</span><span id="ui-flight-time" class="val">--- h</span></div>
+                 <div class="stat-box"><span class="label">LANDINGS</span><span id="ui-landings" class="val">---</span></div>
+                 <div class="stat-box"><span class="label">XP</span><span id="ui-xp" class="val">---</span></div>
+            </div>
+        </div>
+
+        <!-- Havalimanları ve İlerleme -->
         <div class="progress-section">
             <div class="progress-bar-container">
                 <div id="ui-progress-fill" class="progress-fill"></div>
@@ -139,6 +168,7 @@
             </div>
         </div>
 
+        <!-- Canlı Uçuş Verileri -->
         <div class="data-grid">
             <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="val">--- ft</span></div>
             <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="val">--- kts</span></div>
@@ -150,9 +180,14 @@
             <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="val">---°</span></div>
         </div>
 
+        <!-- Butonlar -->
         <div class="card-actions">
-            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">Route</button>
-            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">Follow</button>
+            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Route
+            </button>
+            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg> Follow
+            </button>
         </div>
     </div>
 
