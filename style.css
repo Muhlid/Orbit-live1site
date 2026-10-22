@@ -114,3 +114,35 @@ body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color:
 .glass-action-btn { flex: 1; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .glass-action-btn:hover { background: rgba(255,255,255,0.1); }
 .glass-action-btn.active-btn { background: var(--neon-cyan); color: var(--bg-deep); border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0,245,212,0.3); }
+
+/* HAVALİMANI KARTI (WAYPOINT STYLE BÖLÜMLER) */
+.apt-section {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+.apt-section-header {
+    background: rgba(0,0,0,0.4);
+    padding: 10px 15px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--neon-cyan);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.freq-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,0,127,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.freq-box .f-type { font-size: 10px; font-weight: bold; color: var(--neon-pink); text-transform: uppercase; }
+.freq-box .f-user { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.freq-box .f-time { font-size: 9px; color: var(--text-muted); }
