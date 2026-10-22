@@ -1,6 +1,3 @@
-// ==========================================
-// BURAYA KENDİ VERCEL API LİNKİNİ YAZ!!!
-// ==========================================
 const API_URL = "https://orbtlive.vercel.app/api/flights"; 
 const DETAILS_API_URL = "https://orbtlive.vercel.app/api/details"; 
 
@@ -13,32 +10,39 @@ const ctx = canvas.getContext('2d');
 function resizeCanvas() { const container = document.getElementById('map-container'); canvas.width = container.clientWidth; canvas.height = container.clientHeight; }
 window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-let userColor = "#00F5D4"; 
-let userLabel = "CALLSIGN";
+let userColor = "#00F5D4"; let userLabel = "CALLSIGN";
 let showATC = true, showAirports = true, showTracks = true;
-
 const planeImg = new Image();
-const atcImg = new Image();
-const aptImg = new Image();
+
+// STATIC KATMANLAR (Sıfır kasma için ATC, Havalimanı ve Rotaları Leaflet'e veriyoruz)
+const atcLayer = L.layerGroup().addTo(map);
+const aptLayer = L.layerGroup().addTo(map);
+const trackLayer = L.layerGroup().addTo(map);
+
+// SVG İkonlar
+const atcIconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF007F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L12 22 M8 22L16 22 M12 2A4 4 0 0 0 8 6 M12 2A4 4 0 0 1 16 6 M12 2A8 8 0 0 0 4 10 M12 2A8 8 0 0 1 20 10"/></svg>`;
+const aptIconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E9AAF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>`;
+
+const atcLeafletIcon = L.divIcon({ className: 'custom-map-icon atc-icon', html: atcIconSvg, iconSize: [24,24], iconAnchor: [12,24] });
+const aptLeafletIcon = L.divIcon({ className: 'custom-map-icon apt-icon', html: aptIconSvg, iconSize: [16,16], iconAnchor: [8,8] });
 
 function updateSettings() {
     const cp = document.getElementById("planeColorPicker"); if(cp) userColor = cp.value;
     const ls = document.getElementById("planeLabelSelect"); if(ls) userLabel = ls.value;
-    const ta = document.getElementById("toggleAtc"); if(ta) showATC = ta.checked;
-    const tap = document.getElementById("toggleAirports"); if(tap) showAirports = tap.checked;
-    const tt = document.getElementById("toggleTracks"); if(tt) showTracks = tt.checked;
-
     const svgColor = encodeURIComponent(userColor); 
     planeImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${svgColor}'%3E%3Cpath d='M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z'/%3E%3C/svg%3E`;
-    // Yeni Şık Radar/Kule İkonu
-    atcImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF007F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L12 22 M8 22L16 22 M12 2A4 4 0 0 0 8 6 M12 2A4 4 0 0 1 16 6 M12 2A8 8 0 0 0 4 10 M12 2A8 8 0 0 1 20 10'/%3E%3C/svg%3E`;
-    aptImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E9AAF' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M8 12h8M12 8v8'/%3E%3C/svg%3E`;
 }
 updateSettings();
 
+function updateStaticLayers() {
+    const ta = document.getElementById("toggleAtc"); showATC = ta ? ta.checked : true;
+    const tap = document.getElementById("toggleAirports"); showAirports = tap ? tap.checked : true;
+    const tt = document.getElementById("toggleTracks"); showTracks = tt ? tt.checked : true;
+    renderStaticData();
+}
+
 let flights = {}, atcData = [], airportsData = [], tracksData = [];
-let selectedFlightId = null, selectedAtcId = null, selectedAptId = null;
-let currentServerFilter = "Expert Server"; // Varsayılan Expert Server
+let selectedFlightId = null, knownServers = [], currentServerFilter = "ALL";
 let isFollowing = false, isRouteMode = false;
 
 async function fetchFlightData() {
@@ -51,15 +55,14 @@ async function fetchFlightData() {
         if (data.airports) airportsData = data.airports;
         if (data.tracks) tracksData = data.tracks;
 
+        renderStaticData(); // Statik verileri Leaflet ile çiz
+
         if (data.result) {
-            const serverCounts = {"Expert Server": 0, "Training Server": 0, "Casual Server": 0};
-            data.result.forEach(f => {
-                let sName = f.serverName || "Expert Server";
-                if(serverCounts[sName] !== undefined) serverCounts[sName]++;
-            });
-            document.getElementById("cnt-expert").innerText = serverCounts["Expert Server"];
-            document.getElementById("cnt-training").innerText = serverCounts["Training Server"];
-            document.getElementById("cnt-casual").innerText = serverCounts["Casual Server"];
+            const uniqueServers = [...new Set(data.result.map(f => f.serverName || f.sessionId))];
+            if (JSON.stringify(uniqueServers) !== JSON.stringify(knownServers)) {
+                knownServers = uniqueServers;
+                renderServerButtons();
+            }
 
             const currentIds = new Set();
             data.result.forEach(f => {
@@ -68,23 +71,17 @@ async function fetchFlightData() {
                     Object.assign(flights[f.flightId], { targetLat: f.latitude, targetLng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed });
                     const history = flights[f.flightId].history;
                     const lastP = history[history.length - 1];
-                    if (lastP.lat !== f.latitude || lastP.lng !== f.longitude) {
-                        history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude });
-                        if (history.length > 50) history.shift(); 
-                    }
+                    if (lastP.lat !== f.latitude || lastP.lng !== f.longitude) { history.push({ lat: f.latitude, lng: f.longitude, alt: f.altitude }); if (history.length > 50) history.shift(); }
                 } else {
                     flights[f.flightId] = {
-                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName || "Expert Server", aircraftName: f.aircraftName, liveryName: f.liveryName,
+                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName || f.sessionId, aircraftName: f.aircraftName, liveryName: f.liveryName,
                         targetLat: f.latitude, targetLng: f.longitude, lat: f.latitude, lng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed, history: [{ lat: f.latitude, lng: f.longitude, alt: f.altitude }], fullRoute: []
                     };
                 }
             });
 
             Object.keys(flights).forEach(id => {
-                if (!currentIds.has(id)) {
-                    delete flights[id];
-                    if (selectedFlightId === id) closeInfoPanel(); 
-                }
+                if (!currentIds.has(id)) { delete flights[id]; if (selectedFlightId === id) closeInfoPanel(); }
             });
         }
     } catch(e) {}
@@ -93,69 +90,93 @@ async function fetchFlightData() {
 fetchFlightData();
 setInterval(fetchFlightData, 12000);
 
-function setServerFilter(srv) {
-    currentServerFilter = srv;
-    document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    closeInfoPanel();
+function parseOceanicWp(wpStr) { const m = wpStr.match(/^(\d{2})\/(\d{2})$/); return m ? {lat: parseInt(m[1]), lng: -parseInt(m[2])} : null; }
+
+function renderStaticData() {
+    atcLayer.clearLayers(); aptLayer.clearLayers(); trackLayer.clearLayers();
+
+    if (showTracks && !isRouteMode) {
+        tracksData.forEach(t => {
+            if(!t.path) return;
+            let latlngs = [];
+            t.path.forEach(wp => { const c = parseOceanicWp(wp); if(c) latlngs.push([c.lat, c.lng]); });
+            L.polyline(latlngs, {color: '#FF007F', weight: 1, opacity: 0.4}).addTo(trackLayer);
+        });
+    }
+
+    if (showAirports && !isRouteMode) {
+        airportsData.forEach(ap => {
+            if(!ap.has3D) return;
+            const marker = L.marker([ap.latitude, ap.longitude], {icon: aptLeafletIcon}).addTo(aptLayer);
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                closeInfoPanel();
+                document.getElementById('ui-apt-icao').innerText = ap.icao;
+                document.getElementById('ui-apt-name').innerText = ap.name;
+                document.getElementById('ui-apt-city').innerText = ap.city || "Unknown City";
+                document.getElementById('ui-apt-elev').innerText = ap.elevation ? ap.elevation + " ft" : "---";
+                const p = document.getElementById('airport-info-panel'); p.classList.remove('hidden'); p.classList.add('active');
+            });
+        });
+    }
+
+    if (showATC && !isRouteMode) {
+        atcData.forEach(atc => {
+            const marker = L.marker([atc.latitude, atc.longitude], {icon: atcLeafletIcon}).addTo(atcLayer);
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                closeInfoPanel();
+                const types = ["Ground","Tower","Unicom","Clearance","Approach","Departure","Center","ATIS"];
+                document.getElementById('ui-atc-icao').innerText = atc.airportName || "CENTER";
+                document.getElementById('ui-atc-type').innerText = types[atc.type] || "ATC";
+                document.getElementById('ui-atc-user').innerText = `Controller: ${atc.username || "Anonymous"}`;
+                document.getElementById('ui-atc-atis').innerText = "Fetching ATIS...";
+                
+                fetch(`${DETAILS_API_URL}?type=atis&session=${atc.sessionId}&icao=${atc.airportName}`)
+                    .then(res => res.json())
+                    .then(data => { document.getElementById('ui-atc-atis').innerText = data.atis || "No ATIS available."; })
+                    .catch(()=>{});
+                
+                const p = document.getElementById('atc-info-panel'); p.classList.remove('hidden'); p.classList.add('active');
+            });
+        });
+    }
 }
+
+function renderServerButtons() {
+    const container = document.getElementById("server-buttons");
+    if(!container) return;
+    let html = `<button class="server-btn ${currentServerFilter === 'ALL' ? 'active' : ''}" onclick="setServerFilter('ALL')">All Servers</button>`;
+    knownServers.forEach(srv => {
+        if(srv !== "Live Server") {
+            html += `<button class="server-btn ${currentServerFilter === srv ? 'active' : ''}" onclick="setServerFilter('${srv}')">${srv}</button>`;
+        }
+    });
+    container.innerHTML = html;
+}
+
+function setServerFilter(srv) { currentServerFilter = srv; renderServerButtons(); closeInfoPanel(); }
 
 function getDistanceNM(lat1, lon1, lat2, lon2) {
     const R = 3440.1; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-function getAltitudeColor(alt) {
-    if (alt <= 5000) return '#FFFFFF'; if (alt <= 10000) return '#FFEA00'; if (alt <= 20000) return '#00FF00'; if (alt <= 30000) return '#00bbff'; if (alt <= 39999) return '#A200FF'; return '#FF0000';                   
-}
+function getAltitudeColor(alt) { if (alt <= 5000) return '#FFFFFF'; if (alt <= 10000) return '#FFEA00'; if (alt <= 20000) return '#00FF00'; if (alt <= 30000) return '#00bbff'; if (alt <= 39999) return '#A200FF'; return '#FF0000'; }
+
 function matchesFilters(f) {
     const term = document.getElementById('topSearch').value.trim().toLowerCase();
-    if (f.serverName !== currentServerFilter) return false;
+    if (currentServerFilter !== "ALL" && f.serverName !== currentServerFilter) return false;
     if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return false;
     return true;
 }
-function parseOceanicWp(wpStr) { const m = wpStr.match(/^(\d{2})\/(\d{2})$/); return m ? {lat: parseInt(m[1]), lng: -parseInt(m[2])} : null; }
 
-map.on('move', drawElements);
-map.on('zoom', drawElements);
-
-function drawElements() {
+// ==========================================
+// 4. CANVAS SADECE UÇAKLARI ÇİZER (Sıfır Kasma)
+// ==========================================
+function drawFlights() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (isFollowing && selectedFlightId && flights[selectedFlightId]) map.panTo([flights[selectedFlightId].lat, flights[selectedFlightId].lng], { animate: false });
-    const currentZoom = map.getZoom();
-
-    if (showTracks && !isRouteMode && tracksData.length > 0) {
-        ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255, 0, 127, 0.4)";
-        tracksData.forEach(t => {
-            if(!t.path) return;
-            ctx.beginPath(); let hasStart = false;
-            t.path.forEach(wp => {
-                const c = parseOceanicWp(wp);
-                if(c) { const pos = map.latLngToContainerPoint([c.lat, c.lng]); if(!hasStart) { ctx.moveTo(pos.x, pos.y); hasStart = true; } else ctx.lineTo(pos.x, pos.y); }
-            }); ctx.stroke();
-        });
-    }
-
-    if (showAirports && !isRouteMode && airportsData.length > 0 && currentZoom > 4) {
-        airportsData.forEach(ap => {
-            if(!ap.has3D) return;
-            const pos = map.latLngToContainerPoint([ap.latitude, ap.longitude]);
-            if (pos.x < -20 || pos.x > canvas.width + 20 || pos.y < -20 || pos.y > canvas.height + 20) return;
-            if(selectedAptId === ap.icao) { ctx.beginPath(); ctx.arc(pos.x, pos.y, 14, 0, 2*Math.PI); ctx.fillStyle="rgba(142,154,175,0.3)"; ctx.fill(); ctx.strokeStyle="#8E9AAF"; ctx.stroke(); }
-            ctx.drawImage(aptImg, pos.x - 8, pos.y - 8, 16, 16);
-        });
-    }
-
-    if (showATC && !isRouteMode && atcData.length > 0) {
-        atcData.forEach(atc => {
-            if (atc.serverName && atc.serverName !== currentServerFilter) return; // Sunucu Filtresi
-            const pos = map.latLngToContainerPoint([atc.latitude, atc.longitude]);
-            if (pos.x < -20 || pos.x > canvas.width + 20 || pos.y < -20 || pos.y > canvas.height + 20) return;
-            if(selectedAtcId === atc.frequencyId) { ctx.beginPath(); ctx.arc(pos.x, pos.y-6, 16, 0, 2*Math.PI); ctx.fillStyle="rgba(255,0,127,0.2)"; ctx.fill(); ctx.strokeStyle="#FF007F"; ctx.stroke(); }
-            ctx.drawImage(atcImg, pos.x - 10, pos.y - 18, 20, 20);
-            if (currentZoom > 5) { ctx.fillStyle = "#FF007F"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(atc.airportName, pos.x, pos.y + 12); }
-        });
-    }
 
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
@@ -243,50 +264,31 @@ function drawElements() {
             }
         });
     });
-    requestAnimationFrame(drawElements);
+    requestAnimationFrame(drawFlights);
 }
-drawElements();
+drawFlights();
 
 // ==========================================
-// 5. TIKLAMA HASSASİYETİ & KAPANMA DÜZELTMESİ
+// 5. UÇAK TIKLAMA VE BİLGİ KARTI
 // ==========================================
 map.on('click', function(e) {
     if (e.containerPoint.y < 60) return; 
 
-    let clickedFlt = null; let clickedAtc = null; let clickedApt = null;
-    let minDFlt = 45; let minDAtc = 30; let minDApt = 30;
-
+    let clickedFlt = null; let minDistance = 50; 
+    
     Object.values(flights).forEach(f => {
         if (!matchesFilters(f)) return;
         [-360, 0, 360].forEach(offset => {
             const pos = map.latLngToContainerPoint([f.lat, f.lng + offset]);
             const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
-            if (dist < minDFlt) { minDFlt = dist; clickedFlt = f; }
+            if (dist < minDistance) { minDistance = dist; clickedFlt = f; }
         });
     });
     
-    if (!clickedFlt && showATC) {
-        atcData.forEach(a => {
-            const pos = map.latLngToContainerPoint([a.latitude, a.longitude]);
-            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow((pos.y - 6) - e.containerPoint.y, 2));
-            if (dist < minDAtc) { minDAtc = dist; clickedAtc = a; }
-        });
-    }
-
-    if (!clickedFlt && !clickedAtc && showAirports) {
-        airportsData.forEach(ap => {
-            if(!ap.has3D) return;
-            const pos = map.latLngToContainerPoint([ap.latitude, ap.longitude]);
-            const dist = Math.sqrt(Math.pow(pos.x - e.containerPoint.x, 2) + Math.pow(pos.y - e.containerPoint.y, 2));
-            if (dist < minDApt) { minDApt = dist; clickedApt = ap; }
-        });
-    }
-
-    // Tıklamadan hemen önce eski kartların sınıfını sil (kapanma efekti olmadan)
-    document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
-
-    if (clickedFlt) {
-        selectedFlightId = clickedFlt.id;
+    if (clickedFlt) { 
+        closeInfoPanel();
+        selectedFlightId = clickedFlt.id; 
+        
         document.getElementById('ui-callsign').innerText = clickedFlt.callsign || "Unknown";
         document.getElementById('ui-aircraft').innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
         document.getElementById('ui-va').innerText = clickedFlt.virtualOrg || "General Aviation";
@@ -294,6 +296,9 @@ map.on('click', function(e) {
         document.getElementById('ui-alt').innerText = Math.round(clickedFlt.altitude).toLocaleString() + " ft";
         document.getElementById('ui-speed').innerText = Math.round(clickedFlt.speed) + " kts";
         document.getElementById('ui-heading').innerText = Math.round(clickedFlt.heading) + "°";
+        
+        document.getElementById('ui-origin').innerHTML = '<span class="loading">Loading...</span>';
+        document.getElementById('ui-dest').innerHTML = '<span class="loading">Loading...</span>';
         
         fetch(`${DETAILS_API_URL}?type=flightplan&session=${clickedFlt.sessionId}&flight=${clickedFlt.id}`)
             .then(res => res.json())
@@ -306,40 +311,9 @@ map.on('click', function(e) {
                 }
             }).catch(()=>{});
 
-        // Şak diye aç!
-        document.getElementById('flight-info-panel').classList.remove('hidden');
-        document.getElementById('flight-info-panel').classList.add('active'); 
+        const panel = document.getElementById('flight-info-panel');
+        panel.classList.remove('hidden'); panel.classList.add('active'); 
     } 
-    else if (clickedAtc) {
-        selectedAtcId = clickedAtc.frequencyId;
-        const types = ["Ground","Tower","Unicom","Clearance","Approach","Departure","Center","ATIS"];
-        document.getElementById('ui-atc-icao').innerText = clickedAtc.airportName || "CENTER";
-        document.getElementById('ui-atc-type').innerText = types[clickedAtc.type] || "ATC";
-        document.getElementById('ui-atc-user').innerText = `Controller: ${clickedAtc.username || "Anonymous"}`;
-        
-        fetch(`${DETAILS_API_URL}?type=atis&session=${clickedAtc.sessionId}&icao=${clickedAtc.airportName}`)
-            .then(res => res.json())
-            .then(data => { document.getElementById('ui-atc-atis').innerText = data.atis || "No ATIS available."; })
-            .catch(()=>{});
-
-        document.getElementById('atc-info-panel').classList.remove('hidden');
-        document.getElementById('atc-info-panel').classList.add('active');
-    }
-    else if (clickedApt) {
-        selectedAptId = clickedApt.icao;
-        const uiAptIcao = document.getElementById('ui-apt-icao'); if(uiAptIcao) uiAptIcao.innerText = clickedApt.icao;
-        const uiAptName = document.getElementById('ui-apt-name'); if(uiAptName) uiAptName.innerText = clickedApt.name;
-        
-        // Şehir ve Yükseklik Verisini Ekrana Bas
-        const uiAptCity = document.getElementById('ui-apt-city'); 
-        if(uiAptCity) uiAptCity.innerText = clickedApt.city || "Unknown City";
-        
-        const uiAptElev = document.getElementById('ui-apt-elev'); 
-        if(uiAptElev) uiAptElev.innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
-        
-        const panel = document.getElementById('airport-info-panel');
-        if(panel) { panel.classList.remove('hidden'); panel.classList.add('active'); }
-    }
 });
 
 map.on('dragstart', () => { if(isFollowing) toggleFollow(); });
@@ -357,7 +331,8 @@ function toggleRoute() {
             const r = flights[selectedFlightId].fullRoute;
             map.fitBounds([[r[0].lat, r[0].lng], [r[r.length-1].lat, r[r.length-1].lng], [flights[selectedFlightId].lat, flights[selectedFlightId].lng]], { padding: [50, 50] });
         }
-    } else btn.classList.remove("active-btn");
+        renderStaticData(); // ATC/Airports gizle
+    } else { btn.classList.remove("active-btn"); renderStaticData(); }
 }
 
 setInterval(() => {
@@ -395,6 +370,7 @@ function updateCalculatedData(f) {
 
 function closeInfoPanel() { 
     document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
+    setTimeout(() => { document.querySelectorAll('.info-card').forEach(el => el.classList.add('hidden')); }, 400);
     selectedFlightId = null; selectedAtcId = null; selectedAptId = null;
     if(isFollowing) toggleFollow(); if(isRouteMode) toggleRoute();
 }
