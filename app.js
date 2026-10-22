@@ -1,7 +1,7 @@
 // ==========================================
 // 1. AYARLAR VE HARİTA KURULUMU
 // ==========================================
-const API_URL = "https://orbitlive-j2t2jgf9.b4a.run/api/flights"; // Vercel API Linki
+const API_URL = "https://orbtlive.vercel.app/api/flights";
 
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
