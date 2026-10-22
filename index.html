@@ -9,7 +9,6 @@
 </head>
 <body>
 
-    <!-- TOP NAVIGATION BAR (APPLE GLASS & UZUN TAM EKRAN) -->
     <header id="top-bar" class="glass-panel">
         <div class="logo">
             <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
@@ -23,7 +22,6 @@
         </div>
 
         <button class="glass-btn" onclick="toggleAtcModal()">
-            <!-- YENİ GERÇEK RADAR/ANTEN İKONU (Dolar işareti silindi) -->
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M8 22h8"></path><path d="M12 2a4 4 0 0 0-4 4"></path><path d="M12 2a4 4 0 0 1 4 4"></path><path d="M12 2a8 8 0 0 0-8 8"></path><path d="M12 2a8 8 0 0 1 8 8"></path></svg>
             <span>ATC List</span>
         </button>
@@ -38,15 +36,11 @@
             <span>Settings</span>
         </button>
 
-        <!-- SERVER BUTONLARI SAĞA YASLI (FLEX-AUTO İLE) -->
         <div id="server-buttons" class="server-group">
-            <button class="server-btn active" onclick="setServerFilter('Expert Server')"><div class="dot expert"></div>Expert <span id="cnt-expert">0</span></button>
-            <button class="server-btn" onclick="setServerFilter('Training Server')"><div class="dot training"></div>Training <span id="cnt-training">0</span></button>
-            <button class="server-btn" onclick="setServerFilter('Casual Server')"><div class="dot casual"></div>Casual <span id="cnt-casual">0</span></button>
+            <button class="server-btn active" onclick="setServerFilter('ALL')">All Servers</button>
         </div>
     </header>
 
-    <!-- MAP CONTAINER -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
@@ -57,7 +51,9 @@
         <div class="glass-modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
             <button class="glass-close" onclick="toggleAtcModal()">&#x2715;</button>
             <h2>Active ATC Stations</h2>
-            <div id="atc-list-container" class="atc-list-container"></div>
+            <div id="atc-list-container" class="atc-list-container">
+                <div style="text-align:center; color: var(--text-muted);">Loading ATC Data...</div>
+            </div>
         </div>
     </div>
 
@@ -88,9 +84,9 @@
                 <div class="filter-group">
                     <label>MAP LAYERS</label>
                     <div class="toggle-group">
-                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC Towers</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateStaticLayers()"> Show ATC Towers</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateStaticLayers()"> 3D Airports</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateStaticLayers()"> Oceanic Tracks</label>
                     </div>
                 </div>
 
@@ -120,8 +116,8 @@
         </div>
     </div>
 
-    <!-- FLIGHT INFO PANEL (KAPANMA SORUNU ÇÖZÜLDÜ) -->
-    <div id="flight-info-panel" class="info-card">
+    <!-- FLIGHT INFO PANEL -->
+    <div id="flight-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         
         <div class="card-hero">
@@ -174,7 +170,7 @@
     </div>
 
     <!-- ATC INFO PANEL -->
-    <div id="atc-info-panel" class="info-card">
+    <div id="atc-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         <div class="card-header">
             <div class="header-main">
@@ -192,7 +188,7 @@
     </div>
 
     <!-- AIRPORT INFO PANEL -->
-    <div id="airport-info-panel" class="info-card">
+    <div id="airport-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         <div class="card-header">
             <div class="header-main">
