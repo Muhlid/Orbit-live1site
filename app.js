@@ -327,13 +327,18 @@ map.on('click', function(e) {
     }
     else if (clickedApt) {
         selectedAptId = clickedApt.icao;
-        document.getElementById('ui-apt-icao').innerText = clickedApt.icao;
-        document.getElementById('ui-apt-name').innerText = clickedApt.name;
-        document.getElementById('ui-apt-city').innerText = clickedApt.city || "Unknown City";
-        document.getElementById('ui-apt-elev').innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
+        const uiAptIcao = document.getElementById('ui-apt-icao'); if(uiAptIcao) uiAptIcao.innerText = clickedApt.icao;
+        const uiAptName = document.getElementById('ui-apt-name'); if(uiAptName) uiAptName.innerText = clickedApt.name;
         
-        document.getElementById('airport-info-panel').classList.remove('hidden');
-        document.getElementById('airport-info-panel').classList.add('active');
+        // Şehir ve Yükseklik Verisini Ekrana Bas
+        const uiAptCity = document.getElementById('ui-apt-city'); 
+        if(uiAptCity) uiAptCity.innerText = clickedApt.city || "Unknown City";
+        
+        const uiAptElev = document.getElementById('ui-apt-elev'); 
+        if(uiAptElev) uiAptElev.innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
+        
+        const panel = document.getElementById('airport-info-panel');
+        if(panel) { panel.classList.remove('hidden'); panel.classList.add('active'); }
     }
 });
 
