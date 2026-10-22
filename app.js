@@ -1,7 +1,7 @@
 // ==========================================
 // 1. AYARLAR VE HARİTA KURULUMU
 // ==========================================
-const API_URL = "https://orbitlive-j2t2jgf9.b4a.run/api/flights"; // Mevcut veri çekme API
+const API_URL = "https://orbtlive.vercel.app//api/flights"; // Mevcut veri çekme API
 const DETAILS_API_URL = "https://orbitlive-j2t2jgf9.b4a.run/api/details"; // Yeni eklediğimiz Rota ve ATIS API
 
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
