@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OrbitLive - Professional Flight Tracker</title>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
 </head>
@@ -27,34 +26,44 @@
             <option value="ALL">All Servers</option>
         </select>
 
+        <button class="glass-btn" onclick="toggleAtcModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <span>ATC List</span>
+        </button>
+
         <button class="glass-btn" onclick="toggleFilterModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
             <span>Filters</span>
         </button>
 
         <button class="glass-btn" onclick="toggleSettingsModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             <span>Settings</span>
         </button>
     </header>
 
+    <!-- MAP CONTAINER -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- FILTER MODAL -->
+    <!-- ATC LIST MODAL -->
+    <div id="atc-modal" class="modal-backdrop">
+        <div class="glass-modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+            <button class="glass-close" onclick="toggleAtcModal()">&#x2715;</button>
+            <h2>Active ATC Stations</h2>
+            <div id="atc-list-container" class="atc-list-container">
+                <div style="text-align:center; color: var(--text-muted);">Loading ATC Data...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTERS MODAL -->
     <div id="filter-modal" class="modal-backdrop">
         <div class="glass-modal">
-            <button class="glass-close" onclick="toggleFilterModal()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-            <h2>Fleet & Search Filters</h2>
+            <button class="glass-close" onclick="toggleFilterModal()">&#x2715;</button>
+            <h2>Fleet Board & Filters</h2>
             <div class="filter-row">
                 <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin" placeholder="e.g. OMDB"></div>
                 <div class="filter-group"><label>DESTINATION (ICAO)</label><input type="text" id="fltDest" placeholder="e.g. EGLL"></div>
@@ -67,45 +76,44 @@
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="modal-backdrop">
-        <div class="glass-modal">
-            <button class="glass-close" onclick="toggleSettingsModal()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-            <h2>Radar Display Settings</h2>
+    <!-- FULLSCREEN SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-backdrop fullscreen-modal">
+        <div class="glass-modal fullscreen-content">
+            <button class="glass-close" onclick="toggleSettingsModal()" style="top: 30px; right: 40px; font-size: 30px;">&#x2715;</button>
+            <h1 style="color: var(--neon-cyan); margin-bottom: 40px; font-size: 36px;">OrbitLive Settings</h1>
             
-            <div class="filter-group full-width">
-                <label>MAP LAYERS</label>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC</label>
-                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
-                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
+            <div class="settings-grid">
+                <div class="filter-group">
+                    <label>MAP LAYERS</label>
+                    <div class="toggle-group">
+                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC Towers</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
+                    </div>
                 </div>
-            </div>
 
-            <div class="filter-group full-width">
-                <label>AIRCRAFT COLOR</label>
-                <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()">
-            </div>
-            <div class="filter-group full-width" style="margin-top: 15px;">
-                <label>AIRCRAFT LABEL</label>
-                <select id="planeLabelSelect" class="glass-select-input" onchange="updateSettings()">
-                    <option value="NONE">None (Icon Only)</option>
-                    <option value="CALLSIGN" selected>Callsign</option>
-                    <option value="USERNAME">Username</option>
-                    <option value="VA">Virtual Airline</option>
-                    <option value="LIVERY">Livery</option>
-                </select>
+                <div class="filter-group">
+                    <label>AIRCRAFT COLOR</label>
+                    <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()" class="color-picker-large">
+                </div>
+
+                <div class="filter-group">
+                    <label>AIRCRAFT LABEL</label>
+                    <select id="planeLabelSelect" class="glass-select-input dark-select" onchange="updateSettings()">
+                        <option value="NONE">None (Icon Only)</option>
+                        <option value="CALLSIGN" selected>Callsign</option>
+                        <option value="USERNAME">Username</option>
+                        <option value="VA">Virtual Airline</option>
+                        <option value="LIVERY">Livery</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- INFO CARD -->
-    <aside id="flight-info-panel" class="glass-card">
-        <button class="glass-close" onclick="closeInfoPanel()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
+    <!-- FLIGHT INFO PANEL -->
+    <div id="flight-info-panel" class="info-card hidden">
+        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         
         <div class="card-header">
             <div class="header-main">
@@ -121,15 +129,11 @@
             </div>
             <div class="airports-row">
                 <div class="origin-block">
-                    <span class="ap-tag">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13l-4-4v3H6v2h12v3l4-4z"></path></svg> DEP
-                    </span>
+                    <span class="ap-tag">DEP</span>
                     <span id="ui-origin" class="ap-name loading">Loading...</span>
                 </div>
                 <div class="dest-block">
-                    <span class="ap-tag">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 13l4 4v-3h12v-2H6V9l-4 4z"></path></svg> ARR
-                    </span>
+                    <span class="ap-tag">ARR</span>
                     <span id="ui-dest" class="ap-name loading">Loading...</span>
                 </div>
             </div>
@@ -137,33 +141,56 @@
 
         <div class="data-grid">
             <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="val">--- ft</span></div>
-            <div class="data-box"><span class="label">Ground Speed</span><span id="ui-speed" class="val">--- kts</span></div>
-            
-            <div class="data-box"><span class="label">Flown</span><span id="ui-flown" class="val">--- nm</span></div>
-            <div class="data-box"><span class="label">Remaining</span><span id="ui-remaining" class="val">--- nm</span></div>
-            
+            <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="val">--- kts</span></div>
+            <div class="data-box"><span class="label">Flown (NM)</span><span id="ui-flown" class="val">--- nm</span></div>
+            <div class="data-box"><span class="label">Remaining (NM)</span><span id="ui-remaining" class="val">--- nm</span></div>
             <div class="data-box"><span class="label">Dep. Time</span><span id="ui-dep-time" class="val">---</span></div>
             <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="val">---</span></div>
-
-            <div class="data-box"><span class="label">Next Fix</span><span id="ui-next-wp" class="val">---</span></div>
+            <div class="data-box"><span class="label">Next Waypoint</span><span id="ui-next-wp" class="val">---</span></div>
             <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="val">---°</span></div>
         </div>
 
         <div class="card-actions">
-            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                <span>Route</span>
-            </button>
-            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                <span>Follow</span>
-            </button>
+            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">Route</button>
+            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">Follow</button>
         </div>
-    </aside>
+    </div>
+
+    <!-- ATC INFO PANEL -->
+    <div id="atc-info-panel" class="info-card hidden">
+        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
+        <div class="card-header">
+            <div class="header-main">
+                <span id="ui-atc-icao" class="card-callsign" style="color: var(--neon-pink);">---</span>
+                <span id="ui-atc-type" class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">TOWER</span>
+            </div>
+            <div id="ui-atc-user" class="card-subtitle">Controller: ---</div>
+        </div>
+        <div class="data-grid" style="grid-template-columns: 1fr;">
+            <div class="data-box">
+                <span class="label">ATIS / METAR</span>
+                <span id="ui-atc-atis" class="val" style="font-size: 11px; font-weight: normal; color: #ccc;">Loading ATIS...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AIRPORT INFO PANEL -->
+    <div id="airport-info-panel" class="info-card hidden">
+        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
+        <div class="card-header">
+            <div class="header-main">
+                <span id="ui-apt-icao" class="card-callsign" style="color: #fff;">---</span>
+                <span class="card-badge" style="border-color: #8E9AAF; color: #8E9AAF; background: rgba(142,154,175,0.1);">3D AIRPORT</span>
+            </div>
+            <div id="ui-apt-name" class="card-subtitle" style="font-size: 16px; color: var(--neon-cyan);">---</div>
+        </div>
+        <div class="data-grid">
+            <div class="data-box"><span class="label">City</span><span id="ui-apt-city" class="val">---</span></div>
+            <div class="data-box"><span class="label">Elevation</span><span id="ui-apt-elev" class="val">--- ft</span></div>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Gündüz/Gece Terminatörü İçin (Eğer daha önce kullanıyorsan) -->
-    <script src="https://unpkg.com/@joergdietrich/leaflet.terminator"></script>
     <script src="app.js"></script>
 </body>
 </html>
