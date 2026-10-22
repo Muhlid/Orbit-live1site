@@ -1,8 +1,8 @@
 // ==========================================
-// 1. AYARLAR VE HARİTA KURULUMU
+// BURAYA KENDİ VERCEL API LİNKİNİ YAZ!!!
 // ==========================================
-const API_URL = "https://orbtlive.vercel.app/api/flights"; // Mevcut veri çekme API
-const DETAILS_API_URL = "https://orbtlive.vercel.app/api/details"; // Yeni eklediğimiz Rota ve ATIS API
+const API_URL = "https://orbtlive.vercel.app/api/flights"; 
+const DETAILS_API_URL = "https://orbtlive.vercel.app/api/details"; 
 
 const map = L.map('map', { center: [39.0, 35.0], zoom: 5, minZoom: 2, zoomControl: false, worldCopyJump: true });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -30,18 +30,15 @@ function updateSettings() {
 
     const svgColor = encodeURIComponent(userColor); 
     planeImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${svgColor}'%3E%3Cpath d='M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z'/%3E%3C/svg%3E`;
-    atcImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF007F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 22h8 M10 22L11 12 M14 22L13 12 M9 12h6 M10 8h4 M12 12V8 M12 8L12 4 M12 4A2 2 0 1 1 12 0 A2 2 0 1 1 12 4'/%3E%3C/svg%3E`;
+    // Yeni Şık Radar/Kule İkonu
+    atcImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF007F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L12 22 M8 22L16 22 M12 2A4 4 0 0 0 8 6 M12 2A4 4 0 0 1 16 6 M12 2A8 8 0 0 0 4 10 M12 2A8 8 0 0 1 20 10'/%3E%3C/svg%3E`;
     aptImg.src = `data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E9AAF' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M8 12h8M12 8v8'/%3E%3C/svg%3E`;
-    requestAnimationFrame(drawElements);
 }
 updateSettings();
 
-// ==========================================
-// 2. VERCEL API VERİ ÇEKİMİ VE SUNUCU YÖNETİMİ
-// ==========================================
 let flights = {}, atcData = [], airportsData = [], tracksData = [];
 let selectedFlightId = null, selectedAtcId = null, selectedAptId = null;
-let knownServers = [], currentServerFilter = "ALL";
+let currentServerFilter = "Expert Server"; // Varsayılan Expert Server
 let isFollowing = false, isRouteMode = false;
 
 async function fetchFlightData() {
@@ -55,18 +52,14 @@ async function fetchFlightData() {
         if (data.tracks) tracksData = data.tracks;
 
         if (data.result) {
-            // Sağ Üst Sunucu Butonları Mantığı
-            const serverCounts = {};
+            const serverCounts = {"Expert Server": 0, "Training Server": 0, "Casual Server": 0};
             data.result.forEach(f => {
-                const sName = f.serverName || f.sessionId;
-                serverCounts[sName] = (serverCounts[sName] || 0) + 1;
+                let sName = f.serverName || "Expert Server";
+                if(serverCounts[sName] !== undefined) serverCounts[sName]++;
             });
-            
-            const srvKeys = Object.keys(serverCounts);
-            if (JSON.stringify(srvKeys) !== JSON.stringify(knownServers)) {
-                knownServers = srvKeys;
-            }
-            renderServerButtons(serverCounts);
+            document.getElementById("cnt-expert").innerText = serverCounts["Expert Server"];
+            document.getElementById("cnt-training").innerText = serverCounts["Training Server"];
+            document.getElementById("cnt-casual").innerText = serverCounts["Casual Server"];
 
             const currentIds = new Set();
             data.result.forEach(f => {
@@ -81,7 +74,7 @@ async function fetchFlightData() {
                     }
                 } else {
                     flights[f.flightId] = {
-                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName || f.sessionId, aircraftName: f.aircraftName, liveryName: f.liveryName,
+                        id: f.flightId, sessionId: f.sessionId, callsign: f.callsign, username: f.username, virtualOrg: f.virtualOrganization, serverName: f.serverName || "Expert Server", aircraftName: f.aircraftName, liveryName: f.liveryName,
                         targetLat: f.latitude, targetLng: f.longitude, lat: f.latitude, lng: f.longitude, heading: f.heading, altitude: f.altitude, speed: f.speed, history: [{ lat: f.latitude, lng: f.longitude, alt: f.altitude }], fullRoute: []
                     };
                 }
@@ -100,37 +93,13 @@ async function fetchFlightData() {
 fetchFlightData();
 setInterval(fetchFlightData, 12000);
 
-function renderServerButtons(counts) {
-    const container = document.getElementById("server-buttons");
-    if(!container) return;
-    
-    let html = `<button class="server-btn ${currentServerFilter === 'ALL' ? 'active' : ''}" onclick="setServerFilter('ALL')">All</button>`;
-    
-    const colors = {
-        "Expert Server": "var(--server-expert)",
-        "Training Server": "var(--server-training)",
-        "Casual Server": "var(--server-casual)"
-    };
-
-    Object.keys(counts).forEach(srv => {
-        const color = colors[srv] || "#fff";
-        html += `<button class="server-btn ${currentServerFilter === srv ? 'active' : ''}" onclick="setServerFilter('${srv}')">
-                    <div class="server-dot" style="background:${color};"></div>
-                    ${srv.split(' ')[0]} ${counts[srv]}
-                 </button>`;
-    });
-    container.innerHTML = html;
-}
-
 function setServerFilter(srv) {
     currentServerFilter = srv;
-    renderServerButtons({}); // Rerender to update active class
+    document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
     closeInfoPanel();
 }
 
-// ==========================================
-// 3. MATEMATİKSEL FONKSİYONLAR
-// ==========================================
 function getDistanceNM(lat1, lon1, lat2, lon2) {
     const R = 3440.1; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -140,23 +109,13 @@ function getAltitudeColor(alt) {
     if (alt <= 5000) return '#FFFFFF'; if (alt <= 10000) return '#FFEA00'; if (alt <= 20000) return '#00FF00'; if (alt <= 30000) return '#00bbff'; if (alt <= 39999) return '#A200FF'; return '#FF0000';                   
 }
 function matchesFilters(f) {
-    const termEl = document.getElementById('topSearch');
-    const term = termEl ? termEl.value.trim().toLowerCase() : "";
-    
-    if (currentServerFilter !== "ALL" && f.serverName !== currentServerFilter) return false;
+    const term = document.getElementById('topSearch').value.trim().toLowerCase();
+    if (f.serverName !== currentServerFilter) return false;
     if (term && !(f.callsign || "").toLowerCase().includes(term) && !(f.username || "").toLowerCase().includes(term)) return false;
-    
-    // Gelişmiş filtreler
-    const fltLivery = document.getElementById('fltLivery'); const fLivery = fltLivery ? fltLivery.value.trim().toLowerCase() : "";
-    if (fLivery && !(f.liveryName || "").toLowerCase().includes(fLivery)) return false;
-    
     return true;
 }
 function parseOceanicWp(wpStr) { const m = wpStr.match(/^(\d{2})\/(\d{2})$/); return m ? {lat: parseInt(m[1]), lng: -parseInt(m[2])} : null; }
 
-// ==========================================
-// 4. ÇİZİM MOTORU
-// ==========================================
 map.on('move', drawElements);
 map.on('zoom', drawElements);
 
@@ -182,7 +141,6 @@ function drawElements() {
             if(!ap.has3D) return;
             const pos = map.latLngToContainerPoint([ap.latitude, ap.longitude]);
             if (pos.x < -20 || pos.x > canvas.width + 20 || pos.y < -20 || pos.y > canvas.height + 20) return;
-            
             if(selectedAptId === ap.icao) { ctx.beginPath(); ctx.arc(pos.x, pos.y, 14, 0, 2*Math.PI); ctx.fillStyle="rgba(142,154,175,0.3)"; ctx.fill(); ctx.strokeStyle="#8E9AAF"; ctx.stroke(); }
             ctx.drawImage(aptImg, pos.x - 8, pos.y - 8, 16, 16);
         });
@@ -190,9 +148,9 @@ function drawElements() {
 
     if (showATC && !isRouteMode && atcData.length > 0) {
         atcData.forEach(atc => {
+            if (atc.serverName && atc.serverName !== currentServerFilter) return; // Sunucu Filtresi
             const pos = map.latLngToContainerPoint([atc.latitude, atc.longitude]);
             if (pos.x < -20 || pos.x > canvas.width + 20 || pos.y < -20 || pos.y > canvas.height + 20) return;
-            
             if(selectedAtcId === atc.frequencyId) { ctx.beginPath(); ctx.arc(pos.x, pos.y-6, 16, 0, 2*Math.PI); ctx.fillStyle="rgba(255,0,127,0.2)"; ctx.fill(); ctx.strokeStyle="#FF007F"; ctx.stroke(); }
             ctx.drawImage(atcImg, pos.x - 10, pos.y - 18, 20, 20);
             if (currentZoom > 5) { ctx.fillStyle = "#FF007F"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(atc.airportName, pos.x, pos.y + 12); }
@@ -290,13 +248,10 @@ function drawElements() {
 drawElements();
 
 // ==========================================
-// 5. TIKLAMA HASSASİYETİ (HATA ÇÖZÜLDÜ)
+// 5. TIKLAMA HASSASİYETİ & KAPANMA DÜZELTMESİ
 // ==========================================
 map.on('click', function(e) {
     if (e.containerPoint.y < 60) return; 
-
-    // Önce tüm kartları kapat
-    closeInfoPanel();
 
     let clickedFlt = null; let clickedAtc = null; let clickedApt = null;
     let minDFlt = 45; let minDAtc = 30; let minDApt = 30;
@@ -327,75 +282,70 @@ map.on('click', function(e) {
         });
     }
 
+    // Tıklamadan hemen önce eski kartların sınıfını sil (kapanma efekti olmadan)
+    document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
+
     if (clickedFlt) {
         selectedFlightId = clickedFlt.id;
-        
-        // HATA ÇÖZÜMÜ (GÜVENLİ ATAMA)
-        const uiCallsign = document.getElementById('ui-callsign'); if(uiCallsign) uiCallsign.innerText = clickedFlt.callsign || "Unknown";
-        const uiAircraft = document.getElementById('ui-aircraft'); if(uiAircraft) uiAircraft.innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
-        const uiVa = document.getElementById('ui-va'); if(uiVa) uiVa.innerText = clickedFlt.virtualOrg || "General Aviation";
-        const uiUser = document.getElementById('ui-username'); if(uiUser) uiUser.innerText = clickedFlt.username || "Guest Pilot";
-        const uiServer = document.getElementById('ui-server'); if(uiServer) uiServer.innerText = clickedFlt.serverName || "Live Server";
-        const uiAlt = document.getElementById('ui-alt'); if(uiAlt) uiAlt.innerText = Math.round(clickedFlt.altitude).toLocaleString() + " ft";
-        const uiSpeed = document.getElementById('ui-speed'); if(uiSpeed) uiSpeed.innerText = Math.round(clickedFlt.speed) + " kts";
-        const uiHeading = document.getElementById('ui-heading'); if(uiHeading) uiHeading.innerText = Math.round(clickedFlt.heading) + "°";
-        
-        const uiOrigin = document.getElementById('ui-origin'); if(uiOrigin) uiOrigin.innerHTML = '<span class="loading">Loading...</span>';
-        const uiDest = document.getElementById('ui-dest'); if(uiDest) uiDest.innerHTML = '<span class="loading">Loading...</span>';
+        document.getElementById('ui-callsign').innerText = clickedFlt.callsign || "Unknown";
+        document.getElementById('ui-aircraft').innerText = `${clickedFlt.aircraftName || "?"} (${clickedFlt.liveryName || "Unk"})`;
+        document.getElementById('ui-va').innerText = clickedFlt.virtualOrg || "General Aviation";
+        document.getElementById('ui-username').innerText = clickedFlt.username || "Guest Pilot";
+        document.getElementById('ui-alt').innerText = Math.round(clickedFlt.altitude).toLocaleString() + " ft";
+        document.getElementById('ui-speed').innerText = Math.round(clickedFlt.speed) + " kts";
+        document.getElementById('ui-heading').innerText = Math.round(clickedFlt.heading) + "°";
         
         fetch(`${DETAILS_API_URL}?type=flightplan&session=${clickedFlt.sessionId}&flight=${clickedFlt.id}`)
             .then(res => res.json())
             .then(data => {
                 if(data.route) {
                     flights[selectedFlightId].fullRoute = data.route;
-                    if(uiOrigin) uiOrigin.innerText = data.originAirport;
-                    if(uiDest) uiDest.innerText = data.destinationAirport;
+                    document.getElementById('ui-origin').innerText = data.originAirport;
+                    document.getElementById('ui-dest').innerText = data.destinationAirport;
                     updateCalculatedData(flights[selectedFlightId]);
                 }
             }).catch(()=>{});
 
-        const panel = document.getElementById('flight-info-panel');
-        if(panel) { panel.classList.remove('hidden'); panel.classList.add('active'); }
+        // Şak diye aç!
+        document.getElementById('flight-info-panel').classList.remove('hidden');
+        document.getElementById('flight-info-panel').classList.add('active'); 
     } 
     else if (clickedAtc) {
         selectedAtcId = clickedAtc.frequencyId;
         const types = ["Ground","Tower","Unicom","Clearance","Approach","Departure","Center","ATIS"];
-        
-        const uiAtcIcao = document.getElementById('ui-atc-icao'); if(uiAtcIcao) uiAtcIcao.innerText = clickedAtc.airportName || "CENTER";
-        const uiAtcType = document.getElementById('ui-atc-type'); if(uiAtcType) uiAtcType.innerText = types[clickedAtc.type] || "ATC";
-        const uiAtcUser = document.getElementById('ui-atc-user'); if(uiAtcUser) uiAtcUser.innerText = `Controller: ${clickedAtc.username || "Anonymous"}`;
-        const uiAtcAtis = document.getElementById('ui-atc-atis'); if(uiAtcAtis) uiAtcAtis.innerText = "Fetching ATIS...";
+        document.getElementById('ui-atc-icao').innerText = clickedAtc.airportName || "CENTER";
+        document.getElementById('ui-atc-type').innerText = types[clickedAtc.type] || "ATC";
+        document.getElementById('ui-atc-user').innerText = `Controller: ${clickedAtc.username || "Anonymous"}`;
         
         fetch(`${DETAILS_API_URL}?type=atis&session=${clickedAtc.sessionId}&icao=${clickedAtc.airportName}`)
             .then(res => res.json())
-            .then(data => { if(uiAtcAtis) uiAtcAtis.innerText = data.atis || "No ATIS available for this frequency."; })
+            .then(data => { document.getElementById('ui-atc-atis').innerText = data.atis || "No ATIS available."; })
             .catch(()=>{});
 
-        const panel = document.getElementById('atc-info-panel');
-        if(panel) { panel.classList.remove('hidden'); panel.classList.add('active'); }
+        document.getElementById('atc-info-panel').classList.remove('hidden');
+        document.getElementById('atc-info-panel').classList.add('active');
     }
     else if (clickedApt) {
         selectedAptId = clickedApt.icao;
+        document.getElementById('ui-apt-icao').innerText = clickedApt.icao;
+        document.getElementById('ui-apt-name').innerText = clickedApt.name;
+        document.getElementById('ui-apt-city').innerText = clickedApt.city || "Unknown City";
+        document.getElementById('ui-apt-elev').innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
         
-        const uiAptIcao = document.getElementById('ui-apt-icao'); if(uiAptIcao) uiAptIcao.innerText = clickedApt.icao;
-        const uiAptName = document.getElementById('ui-apt-name'); if(uiAptName) uiAptName.innerText = clickedApt.name;
-        const uiAptCity = document.getElementById('ui-apt-city'); if(uiAptCity) uiAptCity.innerText = clickedApt.city || "Unknown City";
-        const uiAptElev = document.getElementById('ui-apt-elev'); if(uiAptElev) uiAptElev.innerText = clickedApt.elevation ? clickedApt.elevation + " ft" : "---";
-        
-        const panel = document.getElementById('airport-info-panel');
-        if(panel) { panel.classList.remove('hidden'); panel.classList.add('active'); }
+        document.getElementById('airport-info-panel').classList.remove('hidden');
+        document.getElementById('airport-info-panel').classList.add('active');
     }
 });
 
 map.on('dragstart', () => { if(isFollowing) toggleFollow(); });
 
 function toggleFollow() {
-    isFollowing = !isFollowing; const btn = document.getElementById("btn-follow"); if(!btn) return;
+    isFollowing = !isFollowing; const btn = document.getElementById("btn-follow");
     if(isFollowing) btn.classList.add("active-btn"); else btn.classList.remove("active-btn");
 }
 
 function toggleRoute() {
-    isRouteMode = !isRouteMode; const btn = document.getElementById("btn-route"); if(!btn) return;
+    isRouteMode = !isRouteMode; const btn = document.getElementById("btn-route");
     if(isRouteMode) { 
         btn.classList.add("active-btn"); 
         if(selectedFlightId && flights[selectedFlightId].fullRoute && flights[selectedFlightId].fullRoute.length > 0) {
@@ -408,9 +358,9 @@ function toggleRoute() {
 setInterval(() => {
     if (selectedFlightId && flights[selectedFlightId]) {
         updateCalculatedData(flights[selectedFlightId]);
-        const altEl = document.getElementById('ui-alt'); if(altEl) altEl.innerText = Math.round(flights[selectedFlightId].altitude).toLocaleString() + " ft";
-        const spdEl = document.getElementById('ui-speed'); if(spdEl) spdEl.innerText = Math.round(flights[selectedFlightId].speed) + " kts";
-        const hdgEl = document.getElementById('ui-heading'); if(hdgEl) hdgEl.innerText = Math.round(flights[selectedFlightId].heading) + "°";
+        document.getElementById('ui-alt').innerText = Math.round(flights[selectedFlightId].altitude).toLocaleString() + " ft";
+        document.getElementById('ui-speed').innerText = Math.round(flights[selectedFlightId].speed) + " kts";
+        document.getElementById('ui-heading').innerText = Math.round(flights[selectedFlightId].heading) + "°";
     }
 }, 1000);
 
@@ -420,27 +370,26 @@ function updateCalculatedData(f) {
     const flownDist = getDistanceNM(origin.lat, origin.lng, f.lat, f.lng);
     const remainingDist = getDistanceNM(f.lat, f.lng, dest.lat, dest.lng);
     
-    const flEl = document.getElementById('ui-flown'); if(flEl) flEl.innerText = Math.round(flownDist) + " nm";
-    const rmEl = document.getElementById('ui-remaining'); if(rmEl) rmEl.innerText = Math.round(remainingDist) + " nm";
+    document.getElementById('ui-flown').innerText = Math.round(flownDist) + " nm";
+    document.getElementById('ui-remaining').innerText = Math.round(remainingDist) + " nm";
     
     if (f.speed > 50) {
         const now = new Date(); const remainingHours = remainingDist / f.speed;
-        const etaEl = document.getElementById('ui-eta'); if(etaEl) etaEl.innerText = new Date(now.getTime() + remainingHours * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        const depEl = document.getElementById('ui-dep-time'); if(depEl) depEl.innerText = new Date(now.getTime() - (flownDist / f.speed) * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('ui-eta').innerText = new Date(now.getTime() + remainingHours * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('ui-dep-time').innerText = new Date(now.getTime() - (flownDist / f.speed) * 3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }
     
     let closestWpIndex = 0; let minWpDist = Infinity;
     for(let i=0; i<f.fullRoute.length; i++) { const dist = Math.pow(f.fullRoute[i].lat - f.lat, 2) + Math.pow(f.fullRoute[i].lng - f.lng, 2); if(dist<minWpDist) { minWpDist=dist; closestWpIndex=i; } }
     const nextWp = f.fullRoute[closestWpIndex + 1] || dest;
-    const nWpEl = document.getElementById('ui-next-wp'); if(nWpEl) nWpEl.innerText = nextWp ? nextWp.name : "N/A";
+    document.getElementById('ui-next-wp').innerText = nextWp ? nextWp.name : "N/A";
     
     let progress = (flownDist / (flownDist + remainingDist)) * 100;
-    const prgEl = document.getElementById("ui-progress-fill"); if(prgEl) prgEl.style.width = (progress > 100 ? 100 : progress) + "%";
+    document.getElementById("ui-progress-fill").style.width = (progress > 100 ? 100 : progress) + "%";
 }
 
 function closeInfoPanel() { 
     document.querySelectorAll('.info-card').forEach(el => el.classList.remove('active'));
-    setTimeout(() => { document.querySelectorAll('.info-card').forEach(el => el.classList.add('hidden')); }, 400);
     selectedFlightId = null; selectedAtcId = null; selectedAptId = null;
     if(isFollowing) toggleFollow(); if(isRouteMode) toggleRoute();
 }
