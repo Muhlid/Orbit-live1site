@@ -11,60 +11,86 @@
 <body>
 
     <!-- TOP NAVIGATION BAR -->
-    <div id="top-bar">
-        <div class="logo"><span class="text-orbit">Orbit</span><span class="text-live">Live</span></div>
+    <header id="top-bar" class="glass-panel">
+        <div class="logo">
+            <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
+        </div>
         
-        <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign or Pilot..." oninput="applyFilters()">
+        <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="applyFilters()">
+        </div>
 
-        <select id="serverDropdown" class="top-select" onchange="applyFilters()">
+        <select id="serverDropdown" class="glass-select" onchange="applyFilters()">
             <option value="ALL">All Servers</option>
         </select>
 
-        <button class="top-btn" onclick="toggleFilterModal()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-            Filters
+        <button class="glass-btn" onclick="toggleFilterModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <span>Filters</span>
         </button>
-        <button class="top-btn" onclick="toggleSettingsModal()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            Settings
-        </button>
-    </div>
 
-    <!-- MAP CONTAINER -->
+        <button class="glass-btn" onclick="toggleSettingsModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
+        </button>
+    </header>
+
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- ADVANCED FILTERS MODAL -->
-    <div id="filter-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="toggleFilterModal()">&#x2715;</span>
-            <h2>Fleet Board & Filters</h2>
+    <!-- FILTER MODAL -->
+    <div id="filter-modal" class="modal-backdrop">
+        <div class="glass-modal">
+            <button class="glass-close" onclick="toggleFilterModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h2>Fleet & Search Filters</h2>
             <div class="filter-row">
-                <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin"></div>
-                <div class="filter-group"><label>DESTINATION (ICAO)</label><input type="text" id="fltDest"></div>
+                <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin" placeholder="e.g. OMDB"></div>
+                <div class="filter-group"><label>DESTINATION (ICAO)</label><input type="text" id="fltDest" placeholder="e.g. EGLL"></div>
             </div>
-            <div class="filter-group full-width"><label>LIVERY</label><input type="text" id="fltLivery"></div>
-            <div class="filter-group full-width"><label>CALLSIGN</label><input type="text" id="fltCallsign"></div>
-            <div class="filter-group full-width"><label>VIRTUAL AIRLINE (VA)</label><input type="text" id="fltVA"></div>
-            <div class="filter-group full-width"><label>PILOT (USERNAME)</label><input type="text" id="fltPilot"></div>
-            <button class="apply-btn" onclick="applyFilters()">Search</button>
+            <div class="filter-group full-width"><label>LIVERY / AIRLINE</label><input type="text" id="fltLivery" placeholder="e.g. Emirates"></div>
+            <div class="filter-group full-width"><label>CALLSIGN</label><input type="text" id="fltCallsign" placeholder="e.g. UAE201"></div>
+            <div class="filter-group full-width"><label>VIRTUAL AIRLINE (VA)</label><input type="text" id="fltVA" placeholder="e.g. Pakistan Virtual"></div>
+            <div class="filter-group full-width"><label>PILOT USERNAME</label><input type="text" id="fltPilot" placeholder="e.g. PilotName"></div>
+            <button class="glass-submit-btn" onclick="applyFilters()">Apply Filters</button>
         </div>
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="toggleSettingsModal()">&#x2715;</span>
-            <h2>Radar Settings</h2>
+    <div id="settings-modal" class="modal-backdrop">
+        <div class="glass-modal">
+            <button class="glass-close" onclick="toggleSettingsModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h2>Radar Display Settings</h2>
+            
+            <div class="filter-group full-width">
+                <label>MAP LAYERS</label>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC</label>
+                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
+                    <label style="color: #fff; cursor: pointer;"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
+                </div>
+            </div>
+
             <div class="filter-group full-width">
                 <label>AIRCRAFT COLOR</label>
                 <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()">
             </div>
             <div class="filter-group full-width" style="margin-top: 15px;">
                 <label>AIRCRAFT LABEL</label>
-                <select id="planeLabelSelect" onchange="updateSettings()">
+                <select id="planeLabelSelect" class="glass-select-input" onchange="updateSettings()">
                     <option value="NONE">None (Icon Only)</option>
                     <option value="CALLSIGN" selected>Callsign</option>
                     <option value="USERNAME">Username</option>
@@ -75,16 +101,18 @@
         </div>
     </div>
 
-    <!-- FLIGHT INFO PANEL (Tıklama sorunu çözüldü) -->
-    <div id="flight-info-panel" class="info-card">
-        <span class="close-btn-card" onclick="closeInfoPanel()">&#x2715;</span>
+    <!-- INFO CARD -->
+    <aside id="flight-info-panel" class="glass-card">
+        <button class="glass-close" onclick="closeInfoPanel()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
         
         <div class="card-header">
             <div class="header-main">
                 <span id="ui-callsign" class="card-callsign">---</span>
-                <span id="ui-aircraft" class="card-aircraft">---</span>
+                <span id="ui-aircraft" class="card-badge">---</span>
             </div>
-            <div id="ui-va" class="card-va">---</div>
+            <div id="ui-va" class="card-subtitle">---</div>
         </div>
 
         <div class="progress-section">
@@ -93,44 +121,49 @@
             </div>
             <div class="airports-row">
                 <div class="origin-block">
-                    <span class="ap-icon">DEP</span>
+                    <span class="ap-tag">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13l-4-4v3H6v2h12v3l4-4z"></path></svg> DEP
+                    </span>
                     <span id="ui-origin" class="ap-name loading">Loading...</span>
                 </div>
                 <div class="dest-block">
-                    <span class="ap-icon">ARR</span>
+                    <span class="ap-tag">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 13l4 4v-3h12v-2H6V9l-4 4z"></path></svg> ARR
+                    </span>
                     <span id="ui-dest" class="ap-name loading">Loading...</span>
                 </div>
             </div>
         </div>
 
         <div class="data-grid">
-            <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="value">--- ft</span></div>
-            <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="value">--- kts</span></div>
+            <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="val">--- ft</span></div>
+            <div class="data-box"><span class="label">Ground Speed</span><span id="ui-speed" class="val">--- kts</span></div>
             
-            <div class="data-box"><span class="label">Flown (NM)</span><span id="ui-flown" class="value">--- nm</span></div>
-            <div class="data-box"><span class="label">Remaining (NM)</span><span id="ui-remaining" class="value">--- nm</span></div>
+            <div class="data-box"><span class="label">Flown</span><span id="ui-flown" class="val">--- nm</span></div>
+            <div class="data-box"><span class="label">Remaining</span><span id="ui-remaining" class="val">--- nm</span></div>
             
-            <div class="data-box"><span class="label">Dep. Time</span><span id="ui-dep-time" class="value">---</span></div>
-            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="value">---</span></div>
+            <div class="data-box"><span class="label">Dep. Time</span><span id="ui-dep-time" class="val">---</span></div>
+            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="val">---</span></div>
 
-            <div class="data-box"><span class="label">Next Waypoint</span><span id="ui-next-wp" class="value">---</span></div>
-            <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="value">---°</span></div>
+            <div class="data-box"><span class="label">Next Fix</span><span id="ui-next-wp" class="val">---</span></div>
+            <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="val">---°</span></div>
         </div>
 
         <div class="card-actions">
-            <button id="btn-route" class="action-btn" onclick="toggleRoute()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><path d="M9 18l6-6-6-6"/></svg> Route
+            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                <span>Route</span>
             </button>
-            <button id="btn-follow" class="action-btn" onclick="toggleFollow()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg> Follow
+            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                <span>Follow</span>
             </button>
         </div>
-    </div>
+    </aside>
 
-    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Gündüz/Gece Terminatörü İçin (Eğer daha önce kullanıyorsan) -->
+    <script src="https://unpkg.com/@joergdietrich/leaflet.terminator"></script>
     <script src="app.js"></script>
-
 </body>
 </html>
