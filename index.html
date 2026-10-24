@@ -9,16 +9,13 @@
 </head>
 <body>
 
-    <!-- TOP NAVIGATION BAR -->
     <header id="top-bar" class="glass-panel">
         <div class="logo">
             <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
         </div>
         
         <div class="search-box">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="applyFilters()">
         </div>
 
@@ -33,7 +30,7 @@
         </button>
 
         <button class="glass-btn" onclick="toggleSettingsModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             <span>Settings</span>
         </button>
 
@@ -42,13 +39,12 @@
         </div>
     </header>
 
-    <!-- MAP CONTAINER -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
     </div>
 
-    <!-- ATC LIST MODAL -->
+    <!-- ATC LİSTESİ IŞINLANMA EKLENDİ -->
     <div id="atc-modal" class="modal-backdrop">
         <div class="glass-modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
             <button class="glass-close" onclick="toggleAtcModal()">&#x2715;</button>
@@ -59,7 +55,7 @@
         </div>
     </div>
 
-    <!-- FILTERS MODAL -->
+    <!-- FİLTRELER -->
     <div id="filter-modal" class="modal-backdrop">
         <div class="glass-modal">
             <button class="glass-close" onclick="toggleFilterModal()">&#x2715;</button>
@@ -70,20 +66,17 @@
             </div>
             <div class="filter-group full-width"><label>LIVERY / AIRLINE</label><input type="text" id="fltLivery" placeholder="e.g. Emirates"></div>
             <div class="filter-group full-width"><label>CALLSIGN</label><input type="text" id="fltCallsign" placeholder="e.g. UAE201"></div>
-            <div class="filter-group full-width"><label>VIRTUAL AIRLINE (VA)</label><input type="text" id="fltVA" placeholder="e.g. Pakistan Virtual"></div>
-            <div class="filter-group full-width"><label>PILOT USERNAME</label><input type="text" id="fltPilot" placeholder="e.g. PilotName"></div>
             <button class="glass-submit-btn" onclick="applyFilters()">Apply Filters</button>
         </div>
     </div>
 
-    <!-- FULLSCREEN SETTINGS MODAL -->
+    <!-- AYARLAR (YENİ HARİTA MODLARI) -->
     <div id="settings-modal" class="modal-backdrop fullscreen-modal">
         <div class="glass-modal fullscreen-content">
             <button class="glass-close" onclick="toggleSettingsModal()" style="top: 30px; right: 40px; font-size: 30px;">&#x2715;</button>
             <h1 style="color: var(--neon-cyan); margin-bottom: 40px; font-size: 36px;">OrbitLive Settings</h1>
             
             <div class="settings-grid">
-                <!-- YENİ: Harita Katman Stilleri -->
                 <div class="filter-group full-width">
                     <label>MAP STYLE</label>
                     <select id="mapLayerSelect" class="glass-select-input dark-select" onchange="changeMapLayer()">
@@ -97,9 +90,9 @@
                 <div class="filter-group">
                     <label>DISPLAY LAYERS</label>
                     <div class="toggle-group">
-                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateStaticLayers()"> Show ATC Towers</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateStaticLayers()"> 3D Airports</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateStaticLayers()"> Oceanic Tracks</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC Towers</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
+                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
                     </div>
                 </div>
 
@@ -107,53 +100,19 @@
                     <label>AIRCRAFT COLOR</label>
                     <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()" class="color-picker-large">
                 </div>
-
-                <div class="filter-group">
-                    <label>AIRCRAFT LABEL</label>
-                    <select id="planeLabelSelect" class="glass-select-input dark-select" onchange="updateSettings()">
-                        <option value="NONE">None (Icon Only)</option>
-                        <option value="CALLSIGN" selected>Callsign</option>
-                        <option value="USERNAME">Username</option>
-                        <option value="VA">Virtual Airline</option>
-                        <option value="LIVERY">Livery</option>
-                    </select>
-                </div>
-                
-                 <div class="filter-group">
-                    <label>REPLAY MODE (PREMIUM)</label>
-                    <div class="toggle-group" style="justify-content: center;">
-                         <span style="font-size: 14px; color: var(--neon-pink); font-weight: bold;">View past flights (3 Days / Premium: 7 Days) - Coming Soon</span>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- FLIGHT INFO PANEL -->
+    <!-- UÇAK BİLGİ KARTI -->
     <div id="flight-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         
-        <div class="card-hero">
-            <div class="aircraft-image-placeholder">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"></path></svg>
-            </div>
-            <div class="hero-details">
-                <span id="ui-callsign" class="card-callsign">---</span>
-                <span id="ui-va" class="card-va">---</span>
-                <span id="ui-aircraft" class="card-aircraft">---</span>
-            </div>
-        </div>
-
-        <div class="pilot-profile-section">
-            <div class="pilot-header">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <span id="ui-username" style="font-weight: bold; font-size: 14px; margin-left: 5px;">---</span>
-            </div>
-            <div class="pilot-stats">
-                 <div class="stat-box"><span class="label">GRADE</span><span id="ui-grade" class="val">N/A</span></div>
-                 <div class="stat-box"><span class="label">FLIGHT TIME</span><span id="ui-flight-time" class="val">N/A</span></div>
-                 <div class="stat-box"><span class="label">LANDINGS</span><span id="ui-landings" class="val">N/A</span></div>
-                 <div class="stat-box"><span class="label">XP</span><span id="ui-xp" class="val">N/A</span></div>
+        <div class="card-hero" style="margin-bottom: 10px; border-bottom: none;">
+            <div class="hero-details" style="width: 100%;">
+                <span id="ui-callsign" class="card-callsign" style="color: var(--neon-cyan); font-size: 26px;">---</span>
+                <span id="ui-username" class="card-va" style="color: #fff; font-weight: bold; font-size: 14px;">---</span>
+                <span id="ui-aircraft" class="card-aircraft" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; margin-top: 5px;">---</span>
             </div>
         </div>
 
@@ -168,42 +127,41 @@
         <div class="data-grid">
             <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="val">--- ft</span></div>
             <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="val">--- kts</span></div>
-            <div class="data-box"><span class="label">Flown (NM)</span><span id="ui-flown" class="val">--- nm</span></div>
-            <div class="data-box"><span class="label">Remaining (NM)</span><span id="ui-remaining" class="val">--- nm</span></div>
-            <div class="data-box"><span class="label">Dep. Time</span><span id="ui-dep-time" class="val">---</span></div>
-            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="val">---</span></div>
-            <div class="data-box"><span class="label">Next Waypoint</span><span id="ui-next-wp" class="val">---</span></div>
             <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="val">---°</span></div>
+            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="val">---</span></div>
         </div>
 
         <div class="card-actions">
-            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Route
-            </button>
-            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg> Follow
-            </button>
+            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">Route</button>
+            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">Follow</button>
         </div>
     </div>
 
-    <!-- ATC INFO PANEL (GELİŞTİRİLDİ: TÜM KONTROLÖRLER LİSTELENİR) -->
+    <!-- ATC BİLGİ KARTI (3D VE KONTROLÖRLER EKLENDİ) -->
     <div id="atc-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
-        <div class="card-header">
-            <div class="header-main">
-                <span id="ui-atc-icao" class="card-callsign" style="color: var(--neon-pink);">---</span>
-                <span class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">ATC ACTIVE</span>
+        <div class="card-hero" style="border-bottom: none; padding-bottom: 0;">
+            <div class="hero-details" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <span id="ui-atc-icao" class="card-callsign" style="font-size: 24px; color: var(--neon-pink);">---</span>
+                    <span class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">ATC ACTIVE</span>
+                </div>
             </div>
-            <div id="ui-atc-server" class="card-subtitle">Server: ---</div>
         </div>
 
-        <!-- Aktif Kontrolörler Listesi -->
-        <div class="apt-section">
-            <div class="apt-section-header">
-                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Controllers</span>
-            </div>
+        <div class="apt-section" style="margin-top: 15px;">
+            <div class="apt-section-header"><span>📡 Controllers on Duty</span></div>
             <div id="ui-atc-controllers" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
-                <!-- JS Burayı dolduracak -->
+                <!-- Kontrolörler buraya dolacak -->
+            </div>
+        </div>
+
+        <div class="apt-section">
+            <div class="apt-section-header"><span>ℹ️ 3D Airport Info</span></div>
+            <div style="font-size: 12px; color: #ccc; display: flex; flex-direction: column; gap: 8px; padding: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 3D Buildings</div>
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Jetbridges Active</div>
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Taxiway Routing</div>
             </div>
         </div>
 
@@ -215,57 +173,26 @@
         </div>
     </div>
 
-    <!-- AIRPORT INFO PANEL -->
+    <!-- 3D AIRPORT BİLGİ KARTI -->
     <div id="airport-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
-        
         <div class="card-hero" style="border-bottom: none; padding-bottom: 0;">
             <div class="hero-details" style="width: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span id="ui-apt-name" class="card-callsign" style="font-size: 22px; color: #fff;">---</span>
-                    <span class="card-badge" style="border-color: #8E9AAF; color: #8E9AAF; background: rgba(142,154,175,0.1);">3D</span>
+                    <span id="ui-apt-icao" class="card-callsign" style="font-size: 24px; color: #fff;">---</span>
+                    <span class="card-badge" style="border-color: #8E9AAF; color: #8E9AAF; background: rgba(142,154,175,0.1);">3D AIRPORT</span>
                 </div>
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; gap: 5px;">
-                    <span id="ui-apt-icao" style="font-weight: bold; color: var(--neon-cyan);">---</span> • 
-                    <span id="ui-apt-city">---</span> • 
-                    <span id="ui-apt-elev">--- ft</span>
+                    <span id="ui-apt-name">---</span> • <span id="ui-apt-city">---</span>
                 </div>
             </div>
         </div>
 
         <div class="apt-section" style="margin-top: 15px;">
-            <div class="apt-section-header">
-                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M22 13l-4-4v3H6v2h12v3l4-4z"></path></svg> Live Traffic</span>
-            </div>
+            <div class="apt-section-header"><span>✈️ Live Traffic</span></div>
             <div class="data-grid" style="margin-bottom: 0;">
-                <div class="data-box" style="text-align: center;">
-                    <span class="label">Inbound (Arr)</span>
-                    <span id="ui-apt-inbound" class="val" style="color: var(--neon-cyan); font-size: 20px;">0</span>
-                </div>
-                <div class="data-box" style="text-align: center;">
-                    <span class="label">Outbound (Dep)</span>
-                    <span id="ui-apt-outbound" class="val" style="color: #FFEA00; font-size: 20px;">0</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="apt-section">
-            <div class="apt-section-header">
-                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Active Frequencies</span>
-            </div>
-            <div id="ui-apt-frequencies" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
-                <div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">No active frequencies.</div>
-            </div>
-        </div>
-        
-        <div class="apt-section">
-            <div class="apt-section-header">
-                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Airport Info</span>
-            </div>
-            <div style="font-size: 12px; color: #ccc; display: flex; flex-direction: column; gap: 8px; padding: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 3D Buildings</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Jetbridges</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Taxiway Routing</div>
+                <div class="data-box" style="text-align: center;"><span class="label">Inbound (Arr)</span><span id="ui-apt-inbound" class="val" style="color: var(--neon-cyan); font-size: 20px;">0</span></div>
+                <div class="data-box" style="text-align: center;"><span class="label">Outbound (Dep)</span><span id="ui-apt-outbound" class="val" style="color: #FFEA00; font-size: 20px;">0</span></div>
             </div>
         </div>
     </div>
