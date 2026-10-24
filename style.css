@@ -20,9 +20,8 @@ body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color:
 .search-input { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; color: var(--text-pure); font-size: 13px; padding: 8px 14px 8px 36px; width: 200px; outline: none; transition: 0.25s ease; }
 .search-input:focus { border-color: var(--neon-cyan); background: rgba(0,0,0,0.6); width: 240px; }
 
-.glass-select, .top-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; color: var(--text-pure); padding: 8px 15px; font-size: 13px; font-weight: bold; outline: none; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: 0.2s ease; }
-.top-btn:hover, .glass-select:hover { background: var(--neon-cyan); color: var(--bg-deep); border-color: var(--neon-cyan); }
-.glass-select option { background: #0B132B; color: #fff; }
+.glass-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; color: var(--text-pure); padding: 8px 15px; font-size: 13px; font-weight: bold; outline: none; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: 0.2s ease; }
+.glass-btn:hover { background: var(--neon-cyan); color: var(--bg-deep); border-color: var(--neon-cyan); }
 
 #server-buttons { margin-left: auto; display: flex; gap: 8px; }
 .server-btn { background: rgba(16, 24, 48, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.3s; color: var(--text-pure); font-size: 12px; font-weight: bold; }
@@ -37,39 +36,30 @@ body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color:
 .leaflet-control-zoom a { background: rgba(16, 24, 48, 0.68) !important; backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.14) !important; color: var(--neon-cyan) !important; border-radius: 14px !important; width: 42px !important; height: 42px !important; line-height: 40px !important; font-size: 18px !important; box-shadow: 0 12px 36px rgba(0,0,0,0.45) !important; transition: 0.2s !important; }
 .leaflet-control-zoom a:hover { background: var(--neon-cyan) !important; color: #070B19 !important; }
 
-/* OPTIMIZED LEAFLET MARKERS (Sıfır Kasma için) */
-.custom-map-icon { background: transparent; border: none; }
-.custom-map-icon svg { filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8)); }
-.apt-icon svg { stroke: #8E9AAF; }
-.atc-icon svg { stroke: #FF007F; }
-
 /* MODALS */
 .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); z-index: 3000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 .modal-backdrop.active { opacity: 1; pointer-events: auto; }
 .glass-modal { position: relative; width: 420px; max-width: 90vw; background: rgba(11, 19, 43, 0.85); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 22px; box-shadow: 0 12px 36px rgba(0,0,0,0.6); padding: 26px; transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); }
 .modal-backdrop.active .glass-modal { transform: scale(1); }
-
 .fullscreen-modal { backdrop-filter: blur(30px); background: rgba(7, 11, 25, 0.85); }
 .fullscreen-content { width: 100vw !important; height: 100vh !important; max-width: 100% !important; border-radius: 0 !important; border: none !important; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent !important; box-shadow: none !important; }
-.settings-grid { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 30px; }
 
+.settings-grid { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 30px; }
 .glass-close { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: var(--text-muted); background: none; border: none; font-weight: bold; }
 .glass-close:hover { color: #fff; }
-
 .filter-row { display: flex; gap: 12px; margin-bottom: 12px; }
 .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .filter-group.full-width { margin-bottom: 12px; }
 .filter-group label { font-size: 12px; font-weight: bold; color: var(--text-muted); }
-
 .filter-group input, .dark-select { background: rgba(0, 0, 0, 0.6) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; padding: 12px !important; border-radius: 12px !important; outline: none; font-size: 14px; width: 100%; }
 .filter-group input:focus, .dark-select:focus { border-color: var(--neon-cyan) !important; box-shadow: 0 0 10px rgba(0,245,212,0.2); }
-.color-picker-large { height: 50px; cursor: pointer; padding: 0 !important; border-radius: 12px; overflow: hidden; }
 .toggle-group { display: flex; justify-content: space-between; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
 .toggle-label { font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .glass-submit-btn { width: 100%; margin-top: 10px; padding: 14px; border-radius: 12px; background: var(--neon-cyan); color: var(--bg-deep); font-weight: bold; font-size: 15px; border: none; cursor: pointer; transition: 0.2s; }
 .glass-submit-btn:hover { filter: brightness(1.1); box-shadow: 0 0 15px rgba(0,245,212,0.4); }
 
-.atc-list-item { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+.atc-list-item { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: 0.2s ease; }
+.atc-list-item:hover { background: rgba(255,0,127,0.1); border-color: var(--neon-pink); }
 .atc-apt-name { font-size: 18px; font-weight: bold; color: var(--neon-cyan); margin-bottom: 10px; }
 .atc-facilities { display: flex; gap: 10px; justify-content: space-between; }
 .atc-fac-box { display: flex; flex-direction: column; align-items: center; gap: 5px; }
@@ -85,18 +75,10 @@ body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color:
 .close-btn-card:hover { color: #fff; }
 
 .card-hero { margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; display: flex; gap: 15px; align-items: center;}
-.aircraft-image-placeholder { width: 70px; height: 70px; background: rgba(0,0,0,0.3); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 .hero-details { display: flex; flex-direction: column; }
 .card-callsign { font-size: 24px; font-weight: 900; }
 .card-va { font-size: 13px; color: var(--text-muted); margin-bottom: 5px;}
 .card-aircraft { font-size: 12px; color: var(--text-pure); background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; align-self: flex-start;}
-
-.pilot-profile-section { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px; margin-bottom: 15px; }
-.pilot-header { display: flex; align-items: center; margin-bottom: 10px; color: var(--neon-cyan); }
-.pilot-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.stat-box { display: flex; flex-direction: column; }
-.stat-box .label { font-size: 9px; color: var(--text-muted); font-weight: bold; }
-.stat-box .val { font-size: 13px; font-weight: bold; }
 
 .progress-section { margin-bottom: 18px; }
 .progress-bar-container { width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
@@ -115,43 +97,5 @@ body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color:
 .glass-action-btn:hover { background: rgba(255,255,255,0.1); }
 .glass-action-btn.active-btn { background: var(--neon-cyan); color: var(--bg-deep); border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0,245,212,0.3); }
 
-/* HAVALİMANI KARTI (WAYPOINT STYLE BÖLÜMLER) */
-.apt-section {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    margin-bottom: 15px;
-    overflow: hidden;
-}
-.apt-section-header {
-    background: rgba(0,0,0,0.4);
-    padding: 10px 15px;
-    font-size: 12px;
-    font-weight: bold;
-    color: var(--neon-cyan);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.freq-box {
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,0,127,0.2);
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-.freq-box .f-type { font-size: 10px; font-weight: bold; color: var(--neon-pink); text-transform: uppercase; }
-.freq-box .f-user { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.freq-box .f-time { font-size: 9px; color: var(--text-muted); }
-
-/* Diğer tüm kodlar aynı kalacak, sadece en alta ATC Listesi için şu hover efektini ekle: */
-.atc-list-item { 
-    background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; 
-    padding: 15px; margin-bottom: 10px; cursor: pointer; transition: 0.2s ease; 
-}
-.atc-list-item:hover { 
-    background: rgba(255,0,127,0.1); border-color: var(--neon-pink); 
-}
+.apt-section { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 15px; overflow: hidden; }
+.apt-section-header { background: rgba(0,0,0,0.4); padding: 10px 15px; font-size: 12px; font-weight: bold; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
