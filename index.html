@@ -9,6 +9,7 @@
 </head>
 <body>
 
+    <!-- TOP NAVIGATION BAR -->
     <header id="top-bar" class="glass-panel">
         <div class="logo">
             <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
@@ -41,6 +42,7 @@
         </div>
     </header>
 
+    <!-- MAP CONTAINER -->
     <div id="map-container">
         <div id="map"></div>
         <canvas id="flight-canvas"></canvas>
@@ -81,8 +83,19 @@
             <h1 style="color: var(--neon-cyan); margin-bottom: 40px; font-size: 36px;">OrbitLive Settings</h1>
             
             <div class="settings-grid">
+                <!-- YENİ: Harita Katman Stilleri -->
+                <div class="filter-group full-width">
+                    <label>MAP STYLE</label>
+                    <select id="mapLayerSelect" class="glass-select-input dark-select" onchange="changeMapLayer()">
+                        <option value="dark" selected>Orbit Dark (Default)</option>
+                        <option value="satellite">Satellite (HD)</option>
+                        <option value="terrain">Terrain (Topo)</option>
+                        <option value="street">Street Map</option>
+                    </select>
+                </div>
+
                 <div class="filter-group">
-                    <label>MAP LAYERS</label>
+                    <label>DISPLAY LAYERS</label>
                     <div class="toggle-group">
                         <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateStaticLayers()"> Show ATC Towers</label>
                         <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateStaticLayers()"> 3D Airports</label>
@@ -164,105 +177,99 @@
         </div>
 
         <div class="card-actions">
-            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">Route</button>
-            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">Follow</button>
+            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Route
+            </button>
+            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg> Follow
+            </button>
         </div>
     </div>
 
-    <!-- ATC INFO PANEL -->
+    <!-- ATC INFO PANEL (GELİŞTİRİLDİ: TÜM KONTROLÖRLER LİSTELENİR) -->
     <div id="atc-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         <div class="card-header">
             <div class="header-main">
                 <span id="ui-atc-icao" class="card-callsign" style="color: var(--neon-pink);">---</span>
-                <span id="ui-atc-type" class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">TOWER</span>
+                <span class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">ATC ACTIVE</span>
             </div>
-            <div id="ui-atc-user" class="card-subtitle">Controller: ---</div>
+            <div id="ui-atc-server" class="card-subtitle">Server: ---</div>
         </div>
+
+        <!-- Aktif Kontrolörler Listesi -->
+        <div class="apt-section">
+            <div class="apt-section-header">
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Controllers</span>
+            </div>
+            <div id="ui-atc-controllers" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                <!-- JS Burayı dolduracak -->
+            </div>
+        </div>
+
         <div class="data-grid" style="grid-template-columns: 1fr;">
             <div class="data-box">
                 <span class="label">ATIS / METAR</span>
-                <span id="ui-atc-atis" class="val" style="font-size: 11px; font-weight: normal; color: #ccc;">Loading ATIS...</span>
+                <span id="ui-atc-atis" class="val" style="font-size: 11px; font-weight: normal; color: #ccc; line-height: 1.4;">Loading ATIS...</span>
             </div>
         </div>
     </div>
 
-    <!-- AIRPORT INFO PANEL (WAYPOINT STYLE) -->
-    <div id="airport-info-panel" class="info-card">
+    <!-- AIRPORT INFO PANEL -->
+    <div id="airport-info-panel" class="info-card hidden">
         <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
         
-        <!-- Ana Başlık (Havalimanı Adı ve Ülke) -->
         <div class="card-hero" style="border-bottom: none; padding-bottom: 0;">
             <div class="hero-details" style="width: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span id="ui-apt-name" class="card-callsign" style="font-size: 22px; color: #fff;">Malta Intl</span>
+                    <span id="ui-apt-name" class="card-callsign" style="font-size: 22px; color: #fff;">---</span>
                     <span class="card-badge" style="border-color: #8E9AAF; color: #8E9AAF; background: rgba(142,154,175,0.1);">3D</span>
                 </div>
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; gap: 5px;">
-                    <span id="ui-apt-icao" style="font-weight: bold; color: var(--neon-cyan);">LMML</span> • 
-                    <span id="ui-apt-city">Luqa</span> • 
-                    <span id="ui-apt-elev">300 ft</span>
+                    <span id="ui-apt-icao" style="font-weight: bold; color: var(--neon-cyan);">---</span> • 
+                    <span id="ui-apt-city">---</span> • 
+                    <span id="ui-apt-elev">--- ft</span>
                 </div>
             </div>
         </div>
 
-        <!-- Butonlar (Tower View vb.) -->
-        <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
-            <button class="glass-action-btn" style="width: 100%; border-color: rgba(255,0,127,0.3); color: var(--neon-pink);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 5px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                Tower View'a gir (Yakında)
-            </button>
-        </div>
-
-        <!-- BÖLÜM 1: Trafik -->
-        <div class="apt-section">
+        <div class="apt-section" style="margin-top: 15px;">
             <div class="apt-section-header">
-                <span>✈️ Trafik (Live Traffic)</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M22 13l-4-4v3H6v2h12v3l4-4z"></path></svg> Live Traffic</span>
             </div>
             <div class="data-grid" style="margin-bottom: 0;">
                 <div class="data-box" style="text-align: center;">
-                    <span class="label">Gelen</span>
+                    <span class="label">Inbound (Arr)</span>
                     <span id="ui-apt-inbound" class="val" style="color: var(--neon-cyan); font-size: 20px;">0</span>
                 </div>
                 <div class="data-box" style="text-align: center;">
-                    <span class="label">Giden</span>
+                    <span class="label">Outbound (Dep)</span>
                     <span id="ui-apt-outbound" class="val" style="color: #FFEA00; font-size: 20px;">0</span>
                 </div>
             </div>
         </div>
 
-        <!-- BÖLÜM 2: Hava Durumu (ATIS) -->
         <div class="apt-section">
             <div class="apt-section-header">
-                <span> Weather (ATIS)</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Active Frequencies</span>
             </div>
-            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; font-size: 11px; color: #ccc; line-height: 1.4;">
-                <span id="ui-apt-atis">ATIS information is loading...</span>
-            </div>
-        </div>
-
-        <!-- BÖLÜM 3: Frekanslar (ATC) -->
-        <div class="apt-section">
-            <div class="apt-section-header">
-                <span>Active Frequencies</span>
-            </div>
-            <div id="ui-apt-frequencies" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">Aktif frekans aranıyor...</div>
+            <div id="ui-apt-frequencies" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
+                <div style="text-align: center; color: var(--text-muted); font-size: 11px; grid-column: span 2;">No active frequencies.</div>
             </div>
         </div>
         
-        <!-- BÖLÜM 4: Havalimanı Özellikleri -->
         <div class="apt-section">
             <div class="apt-section-header">
-                <span>ℹ️ Havalimanı Bilgisi</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Airport Info</span>
             </div>
-            <div style="font-size: 12px; color: #ccc; display: flex; flex-direction: column; gap: 8px; padding: 5px;">
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 3D Binalar</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Körükler (Jetbridges)</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Taksi Yolu Rotası</div>
+            <div style="font-size: 12px; color: #ccc; display: flex; flex-direction: column; gap: 8px; padding: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 3D Buildings</div>
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Jetbridges</div>
+                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Taxiway Routing</div>
             </div>
         </div>
     </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
