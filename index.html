@@ -27,6 +27,7 @@
 
     <div class="main-container">
         
+        <!-- FLIGHTS TAB -->
         <div id="tab-flights" class="tab-content active">
             <div class="table-container">
                 <table class="data-table">
@@ -42,34 +43,31 @@
                         </tr>
                     </thead>
                     <tbody id="flights-tbody">
+                        <!-- JS Fill -->
                     </tbody>
                 </table>
             </div>
         </div>
 
+        <!-- ATC TAB (YENİ GRUPLANDIRILMIŞ TASARIM) -->
         <div id="tab-atc" class="tab-content">
             <div class="atc-grid">
                 <div class="atc-column">
-                    <h3 style="color: var(--server-expert);">Expert ATC</h3>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead>
-                            <tbody id="atc-expert-tbody"></tbody>
-                        </table>
+                    <h3 style="color: var(--server-expert); margin-bottom: 15px; border-bottom: 1px solid rgba(0,255,0,0.3); padding-bottom: 10px;">Expert ATC</h3>
+                    <div id="atc-expert-container" class="atc-list-wrapper">
+                        <!-- JS Fill -->
                     </div>
                 </div>
                 <div class="atc-column">
-                    <h3 style="color: var(--server-training);">Training ATC</h3>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead>
-                            <tbody id="atc-training-tbody"></tbody>
-                        </table>
+                    <h3 style="color: var(--server-training); margin-bottom: 15px; border-bottom: 1px solid rgba(255,234,0,0.3); padding-bottom: 10px;">Training ATC</h3>
+                    <div id="atc-training-container" class="atc-list-wrapper">
+                         <!-- JS Fill -->
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- LEADERBOARD TAB -->
         <div id="tab-leaderboard" class="tab-content">
             <div class="table-container" style="max-width: 800px; margin: 0 auto;">
                 <h2 style="text-align:center; color: var(--neon-cyan); margin-bottom: 20px;">Top Virtual Organizations</h2>
@@ -84,6 +82,7 @@
                         </tr>
                     </thead>
                     <tbody id="vo-tbody">
+                         <!-- JS Fill -->
                     </tbody>
                 </table>
             </div>
