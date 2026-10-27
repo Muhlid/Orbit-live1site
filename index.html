@@ -1,203 +1,129 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OrbitLive - Professional Flight Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrbitLive - Flight Dashboard</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
     <header id="top-bar" class="glass-panel">
         <div class="logo">
-            <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
+            <span class="text-orbit">Orbit</span><span class="text-live">Board</span>
         </div>
-        
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('expert')">Expert Server</button>
+            <button class="tab-btn" onclick="switchTab('training')">Training Server</button>
+            <button class="tab-btn" onclick="switchTab('casual')">Casual Server</button>
+            <button class="tab-btn" onclick="switchTab('atc')">ATC Live</button>
+            <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
+        </div>
         <div class="search-box">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="topSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="applyFilters()">
-        </div>
-
-        <button class="glass-btn" onclick="toggleAtcModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M8 22h8"></path><path d="M12 2a4 4 0 0 0-4 4"></path><path d="M12 2a4 4 0 0 1 4 4"></path><path d="M12 2a8 8 0 0 0-8 8"></path><path d="M12 2a8 8 0 0 1 8 8"></path></svg>
-            <span>ATC List</span>
-        </button>
-
-        <button class="glass-btn" onclick="toggleFilterModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-            <span>Filters</span>
-        </button>
-
-        <button class="glass-btn" onclick="toggleSettingsModal()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            <span>Settings</span>
-        </button>
-
-        <div id="server-buttons" class="server-group">
-            <button class="server-btn active" onclick="setServerFilter('ALL')">All Servers</button>
+            <input type="text" id="globalSearch" class="search-input" placeholder="Arama yap..." oninput="renderActiveTab()">
         </div>
     </header>
 
-    <div id="map-container">
-        <div id="map"></div>
-        <canvas id="flight-canvas"></canvas>
-    </div>
-
-    <!-- ATC LİSTESİ IŞINLANMA EKLENDİ -->
-    <div id="atc-modal" class="modal-backdrop">
-        <div class="glass-modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
-            <button class="glass-close" onclick="toggleAtcModal()">&#x2715;</button>
-            <h2>Active ATC Stations</h2>
-            <div id="atc-list-container" class="atc-list-container">
-                <div style="text-align:center; color: var(--text-muted);">Loading ATC Data...</div>
+    <div class="main-container">
+        
+        <div id="tab-flights" class="tab-content active">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th onclick="setSort('callsign')">Callsign ⇅</th>
+                            <th onclick="setSort('username')">Pilot ⇅</th>
+                            <th onclick="setSort('aircraftName')">Aircraft ⇅</th>
+                            <th onclick="setSort('liveryName')">Livery ⇅</th>
+                            <th onclick="setSort('virtualOrganization')">VA / VO ⇅</th>
+                            <th>Hız (Kts)</th>
+                            <th>İrtifa (Ft)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flights-tbody">
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
 
-    <!-- FİLTRELER -->
-    <div id="filter-modal" class="modal-backdrop">
-        <div class="glass-modal">
-            <button class="glass-close" onclick="toggleFilterModal()">&#x2715;</button>
-            <h2>Fleet Board & Filters</h2>
-            <div class="filter-row">
-                <div class="filter-group"><label>ORIGIN (ICAO)</label><input type="text" id="fltOrigin" placeholder="e.g. OMDB"></div>
-                <div class="filter-group"><label>DESTINATION (ICAO)</label><input type="text" id="fltDest" placeholder="e.g. EGLL"></div>
-            </div>
-            <div class="filter-group full-width"><label>LIVERY / AIRLINE</label><input type="text" id="fltLivery" placeholder="e.g. Emirates"></div>
-            <div class="filter-group full-width"><label>CALLSIGN</label><input type="text" id="fltCallsign" placeholder="e.g. UAE201"></div>
-            <button class="glass-submit-btn" onclick="applyFilters()">Apply Filters</button>
-        </div>
-    </div>
-
-    <!-- AYARLAR (YENİ HARİTA MODLARI) -->
-    <div id="settings-modal" class="modal-backdrop fullscreen-modal">
-        <div class="glass-modal fullscreen-content">
-            <button class="glass-close" onclick="toggleSettingsModal()" style="top: 30px; right: 40px; font-size: 30px;">&#x2715;</button>
-            <h1 style="color: var(--neon-cyan); margin-bottom: 40px; font-size: 36px;">OrbitLive Settings</h1>
-            
-            <div class="settings-grid">
-                <div class="filter-group full-width">
-                    <label>MAP STYLE</label>
-                    <select id="mapLayerSelect" class="glass-select-input dark-select" onchange="changeMapLayer()">
-                        <option value="dark" selected>Orbit Dark (Default)</option>
-                        <option value="satellite">Satellite (HD)</option>
-                        <option value="terrain">Terrain (Topo)</option>
-                        <option value="street">Street Map</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label>DISPLAY LAYERS</label>
-                    <div class="toggle-group">
-                        <label class="toggle-label"><input type="checkbox" id="toggleAtc" checked onchange="updateSettings()"> Show ATC Towers</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleAirports" checked onchange="updateSettings()"> 3D Airports</label>
-                        <label class="toggle-label"><input type="checkbox" id="toggleTracks" checked onchange="updateSettings()"> Oceanic Tracks</label>
+        <div id="tab-atc" class="tab-content">
+            <div class="atc-grid">
+                <div class="atc-column">
+                    <h3 style="color: var(--server-expert);">Expert ATC</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead>
+                            <tbody id="atc-expert-tbody"></tbody>
+                        </table>
                     </div>
                 </div>
-
-                <div class="filter-group">
-                    <label>AIRCRAFT COLOR</label>
-                    <input type="color" id="planeColorPicker" value="#00F5D4" onchange="updateSettings()" class="color-picker-large">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- UÇAK BİLGİ KARTI -->
-    <div id="flight-info-panel" class="info-card hidden">
-        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
-        
-        <div class="card-hero" style="margin-bottom: 10px; border-bottom: none;">
-            <div class="hero-details" style="width: 100%;">
-                <span id="ui-callsign" class="card-callsign" style="color: var(--neon-cyan); font-size: 26px;">---</span>
-                <span id="ui-username" class="card-va" style="color: #fff; font-weight: bold; font-size: 14px;">---</span>
-                <span id="ui-aircraft" class="card-aircraft" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; margin-top: 5px;">---</span>
-            </div>
-        </div>
-
-        <div class="progress-section">
-            <div class="progress-bar-container"><div id="ui-progress-fill" class="progress-fill"></div></div>
-            <div class="airports-row">
-                <div class="origin-block"><span class="ap-tag">DEP</span><span id="ui-origin" class="ap-name">---</span></div>
-                <div class="dest-block"><span class="ap-tag">ARR</span><span id="ui-dest" class="ap-name">---</span></div>
-            </div>
-        </div>
-
-        <div class="data-grid">
-            <div class="data-box"><span class="label">Altitude</span><span id="ui-alt" class="val">--- ft</span></div>
-            <div class="data-box"><span class="label">Speed</span><span id="ui-speed" class="val">--- kts</span></div>
-            <div class="data-box"><span class="label">Heading</span><span id="ui-heading" class="val">---°</span></div>
-            <div class="data-box"><span class="label">ETA</span><span id="ui-eta" class="val">---</span></div>
-        </div>
-
-        <div class="card-actions">
-            <button id="btn-route" class="glass-action-btn" onclick="toggleRoute()">Route</button>
-            <button id="btn-follow" class="glass-action-btn" onclick="toggleFollow()">Follow</button>
-        </div>
-    </div>
-
-    <!-- ATC BİLGİ KARTI (3D VE KONTROLÖRLER EKLENDİ) -->
-    <div id="atc-info-panel" class="info-card hidden">
-        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
-        <div class="card-hero" style="border-bottom: none; padding-bottom: 0;">
-            <div class="hero-details" style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span id="ui-atc-icao" class="card-callsign" style="font-size: 24px; color: var(--neon-pink);">---</span>
-                    <span class="card-badge" style="border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,127,0.1);">ATC ACTIVE</span>
+                <div class="atc-column">
+                    <h3 style="color: var(--server-training);">Training ATC</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead>
+                            <tbody id="atc-training-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="apt-section" style="margin-top: 15px;">
-            <div class="apt-section-header"><span>📡 Controllers on Duty</span></div>
-            <div id="ui-atc-controllers" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
-                <!-- Kontrolörler buraya dolacak -->
-            </div>
-        </div>
-
-        <div class="apt-section">
-            <div class="apt-section-header"><span>ℹ️ 3D Airport Info</span></div>
-            <div style="font-size: 12px; color: #ccc; display: flex; flex-direction: column; gap: 8px; padding: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 3D Buildings</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Jetbridges Active</div>
-                <div style="display: flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg> Taxiway Routing</div>
-            </div>
-        </div>
-
-        <div class="data-grid" style="grid-template-columns: 1fr;">
-            <div class="data-box">
-                <span class="label">ATIS / METAR</span>
-                <span id="ui-atc-atis" class="val" style="font-size: 11px; font-weight: normal; color: #ccc; line-height: 1.4;">Loading ATIS...</span>
+        <div id="tab-leaderboard" class="tab-content">
+            <div class="table-container" style="max-width: 800px; margin: 0 auto;">
+                <h2 style="text-align:center; color: var(--neon-cyan); margin-bottom: 20px;">Top Virtual Organizations</h2>
+                <table class="data-table leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Organizasyon (VO)</th>
+                            <th>Aktif Uçuşlar</th>
+                            <th>Benzersiz Pilot</th>
+                            <th>VO Puanı</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vo-tbody">
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- 3D AIRPORT BİLGİ KARTI -->
-    <div id="airport-info-panel" class="info-card hidden">
-        <button class="glass-close-card" onclick="closeInfoPanel()">&#x2715;</button>
-        <div class="card-hero" style="border-bottom: none; padding-bottom: 0;">
-            <div class="hero-details" style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span id="ui-apt-icao" class="card-callsign" style="font-size: 24px; color: #fff;">---</span>
-                    <span class="card-badge" style="border-color: #8E9AAF; color: #8E9AAF; background: rgba(142,154,175,0.1);">3D AIRPORT</span>
-                </div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; gap: 5px;">
-                    <span id="ui-apt-name">---</span> • <span id="ui-apt-city">---</span>
+    <div id="pilot-card-modal" class="modal-backdrop">
+        <div class="glass-modal card-modal">
+            <button class="glass-close" onclick="closePilotCard()">&#x2715;</button>
+            
+            <div class="card-customizer">
+                <label>Arka Plan Rengi (Düz veya Gradient):</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <input type="color" id="cardColor1" value="#0f0c29" onchange="updateCardBg()">
+                    <input type="color" id="cardColor2" value="#302b63" onchange="updateCardBg()">
                 </div>
             </div>
-        </div>
 
-        <div class="apt-section" style="margin-top: 15px;">
-            <div class="apt-section-header"><span>✈️ Live Traffic</span></div>
-            <div class="data-grid" style="margin-bottom: 0;">
-                <div class="data-box" style="text-align: center;"><span class="label">Inbound (Arr)</span><span id="ui-apt-inbound" class="val" style="color: var(--neon-cyan); font-size: 20px;">0</span></div>
-                <div class="data-box" style="text-align: center;"><span class="label">Outbound (Dep)</span><span id="ui-apt-outbound" class="val" style="color: #FFEA00; font-size: 20px;">0</span></div>
+            <div id="pilot-card-export" class="pilot-card-export">
+                <div class="pc-header">
+                    <div class="pc-callsign" id="pc-callsign">---</div>
+                    <div class="pc-va" id="pc-va">---</div>
+                </div>
+                <div class="pc-user" id="pc-username">---</div>
+                
+                <div class="pc-stats-grid">
+                    <div class="pc-stat"><span class="lbl">Aircraft</span><span id="pc-ac">---</span></div>
+                    <div class="pc-stat"><span class="lbl">Livery</span><span id="pc-livery">---</span></div>
+                    <div class="pc-stat"><span class="lbl">Altitude</span><span id="pc-alt">--- ft</span></div>
+                    <div class="pc-stat"><span class="lbl">Speed</span><span id="pc-spd">--- kts</span></div>
+                    <div class="pc-stat"><span class="lbl">Server</span><span id="pc-srv" style="color: var(--neon-cyan);">---</span></div>
+                    <div class="pc-stat"><span class="lbl">Status</span><span style="color: #00FF00;">🟢 Airborne</span></div>
+                </div>
+                <div class="pc-watermark">OrbitLive Tracking System</div>
             </div>
+
+            <button class="glass-submit-btn" onclick="downloadPilotCard()">Kartı PNG Olarak İndir</button>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
