@@ -27,21 +27,33 @@ function updateAtcBadges() {
 
 function updateTrendingWidget() {
     const srvFilter = document.getElementById("trendServer").value;
-    const acCounts = {}; const atcZones = {};
+    const acCounts = {};
+    const depCounts = {};
+    const arrCounts = {};
+
     flightsData.forEach(f => {
         if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
+        
+        // Uçak Sayımı
         const ac = f.aircraftName;
         if (ac && ac !== "Unknown Aircraft") acCounts[ac] = (acCounts[ac] || 0) + 1;
+        
+        // Kalkış (Origin) Sayımı
+        const dep = f.originAirport;
+        if (dep && dep !== "N/A" && dep !== "Loading" && dep.length > 2) depCounts[dep] = (depCounts[dep] || 0) + 1;
+
+        // Varış (Destination) Sayımı
+        const arr = f.destinationAirport;
+        if (arr && arr !== "N/A" && arr !== "Loading" && arr.length > 2) arrCounts[arr] = (arrCounts[arr] || 0) + 1;
     });
-    atcData.forEach(a => {
-        if (srvFilter !== "ALL" && !(a.serverName || "").toLowerCase().includes(srvFilter)) return;
-        const apt = a.airportName;
-        if (apt) atcZones[apt] = (atcZones[apt] || 0) + 1;
-    });
-    const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-    const topZones = Object.entries(atcZones).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+    const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+    const topDep = Object.entries(depCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+    const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+
     document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
-    document.getElementById("trend-atc").innerHTML = topZones.map(item => `<li><span>${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} ATC</span></li>`).join("") || "<li>No data</li>";
+    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Flt</span></li>`).join("") || "<li>Populating...</li>";
+    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Flt</span></li>`).join("") || "<li>Populating...</li>";
 }
 
 function switchTab(tabId) {
