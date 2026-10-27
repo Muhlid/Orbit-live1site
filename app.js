@@ -19,7 +19,7 @@ async function fetchFlightData() {
     } catch(e) { console.error("Fetch Error:", e); }
 }
 fetchFlightData();
-setInterval(fetchFlightData, 15000);
+setInterval(fetchFlightData, 15000); // 15 saniyede bir güncelle
 
 function switchTab(tabId) {
     activeTab = tabId;
@@ -54,9 +54,8 @@ function renderActiveTab() {
 }
 
 function renderFlightsTable(serverFilter, searchTerm) {
-    const srvName = serverFilter === 'expert' ? "Expert Server" : (serverFilter === 'training' ? "Training Server" : "Casual Server");
-    
-    let filtered = flightsData.filter(f => f.serverName === srvName);
+    // ÇÖZÜM: Sunucu ismini '.includes' ile arıyoruz, böylece eşleşmeme hatası ortadan kalktı.
+    let filtered = flightsData.filter(f => (f.serverName || "").toLowerCase().includes(serverFilter));
     
     if (searchTerm) {
         filtered = filtered.filter(f => 
@@ -77,7 +76,12 @@ function renderFlightsTable(serverFilter, searchTerm) {
     });
 
     const tbody = document.getElementById("flights-tbody");
+    if(!tbody) return;
     tbody.innerHTML = "";
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found on this server.</td></tr>`;
+    }
     
     filtered.forEach(f => {
         const tr = document.createElement('tr');
@@ -98,13 +102,19 @@ function renderFlightsTable(serverFilter, searchTerm) {
 function renderAtcTables(searchTerm) {
     const atcTypesMap = { 0:"GND", 1:"TWR", 2:"UNICOM", 3:"CLR", 4:"APP", 5:"DEP", 6:"CTR", 7:"ATIS" };
     
-    const filterAtc = (srv) => atcData.filter(a => a.serverName === srv && 
+    const filterAtc = (srv) => atcData.filter(a => (a.serverName || "").toLowerCase().includes(srv) && 
         ((a.airportName || "").toLowerCase().includes(searchTerm) || (a.username || "").toLowerCase().includes(searchTerm))
     ).sort((a, b) => (a.airportName || "").localeCompare(b.airportName || ""));
 
     const renderTable = (data, tbodyId) => {
         const tbody = document.getElementById(tbodyId);
+        if(!tbody) return;
         tbody.innerHTML = "";
+        
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray;">No ATC online</td></tr>`;
+        }
+
         data.forEach(a => {
             tbody.innerHTML += `
                 <tr>
@@ -116,8 +126,8 @@ function renderAtcTables(searchTerm) {
         });
     };
 
-    renderTable(filterAtc("Expert Server"), "atc-expert-tbody");
-    renderTable(filterAtc("Training Server"), "atc-training-tbody");
+    renderTable(filterAtc("expert"), "atc-expert-tbody");
+    renderTable(filterAtc("training"), "atc-training-tbody");
 }
 
 function renderLeaderboard() {
@@ -142,13 +152,18 @@ function renderLeaderboard() {
     leaderboard.sort((a, b) => b.score - a.score);
 
     const tbody = document.getElementById("vo-tbody");
+    if(!tbody) return;
     tbody.innerHTML = "";
+
+    if (leaderboard.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">No VA data available.</td></tr>`;
+    }
 
     leaderboard.forEach((vo, index) => {
         let rankStr = `${index + 1}.`;
-        if (index === 0) rankStr = `<span class="medal-1">🥇 1.</span>`;
-        if (index === 1) rankStr = `<span class="medal-2">🥈 2.</span>`;
-        if (index === 2) rankStr = `<span class="medal-3">🥉 3.</span>`;
+        if (index === 0) rankStr = `<span class="medal-1">🥇 1st</span>`;
+        if (index === 1) rankStr = `<span class="medal-2">🥈 2nd</span>`;
+        if (index === 2) rankStr = `<span class="medal-3">🥉 3rd</span>`;
 
         tbody.innerHTML += `
             <tr>
@@ -170,7 +185,7 @@ function openPilotCard(f) {
     document.getElementById("pc-livery").innerText = f.liveryName || "-";
     document.getElementById("pc-alt").innerText = `${Math.round(f.altitude)} ft`;
     document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
-    document.getElementById("pc-srv").innerText = f.serverName || "-";
+    document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
 
     document.getElementById("pilot-card-modal").classList.add("active");
 }
