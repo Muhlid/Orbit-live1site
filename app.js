@@ -1,13 +1,8 @@
 const API_URL = "https://orbtlive.vercel.app/api/flights"; 
-const STATS_API_URL = "https://orbtlive.vercel.app/api/stats"; 
 
-let flightsData = [];
-let atcData = [];
-let activeTab = "expert";
-let sortCol = "callsign";
-let sortAsc = true;
-let currentSelectedUserId = null; 
-let searchTimeout = null;
+let flightsData = []; let atcData = [];
+let activeTab = "expert"; let sortCol = "callsign"; let sortAsc = true;
+let currentSelectedFlight = null; let searchTimeout = null;
 
 async function fetchFlightData() {
     try {
@@ -16,10 +11,7 @@ async function fetchFlightData() {
         const data = await res.json();
         if (data.result) flightsData = data.result;
         if (data.atc) atcData = data.atc;
-        
-        updateAtcBadges();
-        updateTrendingWidget();
-        renderActiveTab();
+        updateAtcBadges(); updateTrendingWidget(); renderActiveTab();
     } catch(e) { console.error("Fetch Error:", e); }
 }
 
@@ -35,24 +27,19 @@ function updateAtcBadges() {
 
 function updateTrendingWidget() {
     const srvFilter = document.getElementById("trendServer").value;
-    const acCounts = {};
-    const atcZones = {};
-
+    const acCounts = {}; const atcZones = {};
     flightsData.forEach(f => {
         if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
         const ac = f.aircraftName;
         if (ac && ac !== "Unknown Aircraft") acCounts[ac] = (acCounts[ac] || 0) + 1;
     });
-
     atcData.forEach(a => {
         if (srvFilter !== "ALL" && !(a.serverName || "").toLowerCase().includes(srvFilter)) return;
         const apt = a.airportName;
         if (apt) atcZones[apt] = (atcZones[apt] || 0) + 1;
     });
-
     const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
     const topZones = Object.entries(atcZones).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
     document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
     document.getElementById("trend-atc").innerHTML = topZones.map(item => `<li><span>${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} ATC</span></li>`).join("") || "<li>No data</li>";
 }
@@ -62,28 +49,14 @@ function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     event.currentTarget.classList.add('active');
-    
     if (tabId === 'atc') document.getElementById('tab-atc').classList.add('active');
     else if (tabId === 'leaderboard') document.getElementById('tab-leaderboard').classList.add('active');
     else document.getElementById('tab-flights').classList.add('active'); 
-    
     renderActiveTab();
 }
 
-function setSort(col) {
-    if(sortCol === col) sortAsc = !sortAsc;
-    else { sortCol = col; sortAsc = true; }
-    renderActiveTab();
-}
-
-// TAKILMA ÖNLEYİCİ: Arama gecikmesi (Debounce)
-function handleSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        renderActiveTab();
-    }, 300); // 300ms bekle, gereksiz DOM yükünü engelle
-}
-
+function setSort(col) { if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; } renderActiveTab(); }
+function handleSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { renderActiveTab(); }, 300); }
 function renderActiveTab() {
     const searchTerm = document.getElementById("globalSearch").value.toLowerCase();
     if (activeTab === "leaderboard") renderLeaderboard(searchTerm);
@@ -91,51 +64,32 @@ function renderActiveTab() {
     else renderFlightsTable(activeTab, searchTerm);
 }
 
-// PERFORMANS: DocumentFragment kullanımı ile takılmalar giderildi
 function renderFlightsTable(serverFilter, searchTerm) {
     let filtered = flightsData.filter(f => (f.serverName || "").toLowerCase().includes(serverFilter));
-    
     if (searchTerm) {
         filtered = filtered.filter(f => 
-            (f.callsign || "").toLowerCase().includes(searchTerm) ||
-            (f.username || "").toLowerCase().includes(searchTerm) ||
-            (f.liveryName || "").toLowerCase().includes(searchTerm) ||
-            (f.aircraftName || "").toLowerCase().includes(searchTerm) ||
+            (f.callsign || "").toLowerCase().includes(searchTerm) || (f.username || "").toLowerCase().includes(searchTerm) ||
+            (f.liveryName || "").toLowerCase().includes(searchTerm) || (f.aircraftName || "").toLowerCase().includes(searchTerm) ||
             (f.virtualOrganization || "").toLowerCase().includes(searchTerm)
         );
     }
-
     filtered.sort((a, b) => {
-        let valA = (a[sortCol] || "").toString().toLowerCase();
-        let valB = (b[sortCol] || "").toString().toLowerCase();
-        if (valA < valB) return sortAsc ? -1 : 1;
-        if (valA > valB) return sortAsc ? 1 : -1;
-        return 0;
+        let valA = (a[sortCol] || "").toString().toLowerCase(); let valB = (b[sortCol] || "").toString().toLowerCase();
+        if (valA < valB) return sortAsc ? -1 : 1; if (valA > valB) return sortAsc ? 1 : -1; return 0;
     });
 
     const tbody = document.getElementById("flights-tbody");
     if(!tbody) return;
-    
-    if (filtered.length === 0) { 
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found.</td></tr>`; 
-        return; 
-    }
+    if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found.</td></tr>`; return; }
     
     const fragment = document.createDocumentFragment();
     filtered.forEach(f => {
         const tr = document.createElement('tr');
         tr.onclick = () => openPilotCard(f);
-        tr.innerHTML = `
-            <td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td>
-            <td>${f.username}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td>
-            <td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td>
-            <td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>
-        `;
+        tr.innerHTML = `<td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td><td>${f.username}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td><td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td><td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>`;
         fragment.appendChild(tr);
     });
-
-    tbody.innerHTML = ""; 
-    tbody.appendChild(fragment); // Tek seferde basarak kasmayı bitirir
+    tbody.innerHTML = ""; tbody.appendChild(fragment);
 }
 
 function renderAtcTables(searchTerm) {
@@ -147,19 +101,15 @@ function renderAtcTables(searchTerm) {
     const renderTable = (data, tbodyId) => {
         const tbody = document.getElementById(tbodyId);
         if(!tbody) return;
-        
         if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray;">No ATC online</td></tr>`; return; }
-
         const fragment = document.createDocumentFragment();
         data.forEach(a => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td style="font-weight:bold;">${a.airportName || "CENTER"}</td><td style="color:var(--neon-pink); font-size:12px;">${typesMap[a.type] || "ATC"}</td><td>${a.username || "Controller"}</td>`;
             fragment.appendChild(tr);
         });
-        tbody.innerHTML = "";
-        tbody.appendChild(fragment);
+        tbody.innerHTML = ""; tbody.appendChild(fragment);
     };
-
     renderTable(filterAtc("expert"), "atc-expert-tbody");
     renderTable(filterAtc("training"), "atc-training-tbody");
 }
@@ -170,23 +120,15 @@ function renderLeaderboard(searchTerm) {
         const vo = flight.virtualOrganization;
         if (vo && vo.trim() !== "" && vo.toLowerCase() !== "unknown") {
             if (!voMap[vo]) voMap[vo] = { count: 0, pilots: new Set() };
-            voMap[vo].count++;
-            voMap[vo].pilots.add(flight.callsign);
+            voMap[vo].count++; voMap[vo].pilots.add(flight.callsign);
         }
     });
-
-    let scoredVOs = Object.entries(voMap).map(([vo, stats]) => {
-        return { name: vo, flights: stats.count, pilots: stats.pilots.size, score: (stats.count * 2) + (stats.pilots.size * 3) };
-    });
-
-    if (searchTerm) {
-        scoredVOs = scoredVOs.filter(vo => vo.name.toLowerCase().includes(searchTerm));
-    }
+    let scoredVOs = Object.entries(voMap).map(([vo, stats]) => { return { name: vo, flights: stats.count, pilots: stats.pilots.size, score: (stats.count * 2) + (stats.pilots.size * 3) }; });
+    if (searchTerm) scoredVOs = scoredVOs.filter(vo => vo.name.toLowerCase().includes(searchTerm));
     scoredVOs.sort((a, b) => b.score - a.score);
 
     const tbody = document.getElementById("vo-tbody");
     if(!tbody) return;
-    
     if (scoredVOs.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">No VA found.</td></tr>`; return; }
 
     const fragment = document.createDocumentFragment();
@@ -199,12 +141,22 @@ function renderLeaderboard(searchTerm) {
         tr.innerHTML = `<td style="font-weight:bold;">${rankStr}</td><td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td><td>${entry.flights}</td><td>${entry.pilots}</td><td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td>`;
         fragment.appendChild(tr);
     });
-    tbody.innerHTML = "";
-    tbody.appendChild(fragment);
+    tbody.innerHTML = ""; tbody.appendChild(fragment);
+}
+
+// ---------------- PANEL KONTROLLERİ ----------------
+function openPanel(panelId) {
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+    document.getElementById("panel-overlay").classList.add('active');
+}
+function closeSidePanels() {
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById("panel-overlay").classList.remove('active');
 }
 
 function openPilotCard(f) {
-    currentSelectedUserId = f.userId; 
+    currentSelectedFlight = f; 
     document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
     document.getElementById("pc-va").innerText = f.virtualOrganization || "-";
     document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
@@ -214,66 +166,40 @@ function openPilotCard(f) {
     document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
     document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
 
-    // İstatistik alanını sıfırla
     document.getElementById("live-stats-container").classList.add("hidden");
-    const btn = document.getElementById("btn-load-stats");
-    btn.innerText = "Load Live Stats"; btn.disabled = false;
+    const btnStats = document.getElementById("btn-load-stats");
+    btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
 
-    // Rota alanını sıfırla ve yükle
     document.getElementById("active-flight-route").classList.add("hidden");
     document.getElementById("waypoints-container").classList.remove("open");
-    document.getElementById("pc-origin").innerText = "Loading...";
-    document.getElementById("pc-dest").innerText = "Loading...";
-    document.getElementById("pc-waypoints-list").innerHTML = "";
-
-    // Uçuş planını Vercel API'den (Details) çek
-    fetch(`https://orbtlive.vercel.app/api/details?type=flightplan&session=${f.sessionId}&flight=${f.flightId}`)
+    
+    // Rota Bilgisi Çek
+    fetch(`${API_URL}?action=route&sessionId=${f.sessionId}&flightId=${f.flightId}`)
         .then(res => res.json())
         .then(data => {
             if (data.route && data.route.length > 0) {
                 document.getElementById("active-flight-route").classList.remove("hidden");
                 document.getElementById("pc-origin").innerText = data.originAirport || "N/A";
                 document.getElementById("pc-dest").innerText = data.destinationAirport || "N/A";
-                
-                let wpHTML = "";
-                data.route.forEach(wp => {
-                    if (wp.name) {
-                        wpHTML += `<li class="wp-item"><span class="wp-icon">◆</span> <span>${wp.name}</span></li>`;
-                    }
-                });
-                
-                document.getElementById("pc-waypoints-list").innerHTML = wpHTML || "<li style='color:gray;'>No waypoints filed.</li>";
+                document.getElementById("pc-waypoints-list").innerHTML = data.route.map(wp => `<li class="wp-item"><span class="wp-icon">◆</span> <span>${wp.name}</span></li>`).join("");
             }
-        })
-        .catch(err => console.error("Flight plan fetch error:", err));
+        }).catch(err => console.error(err));
 
     openPanel("pilot-side-panel");
 }
 
-// Accordion (Açılır Kapanır) Menü Fonksiyonu
-function toggleWaypoints() {
-    const container = document.getElementById("waypoints-container");
-    container.classList.toggle("open");
-}
-
-function updateCardBg() {
-    const c1 = document.getElementById("cardColor1").value;
-    const c2 = document.getElementById("cardColor2").value;
-    document.getElementById("pilot-card-export").style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
-}
+function toggleWaypoints() { document.getElementById("waypoints-container").classList.toggle("open"); }
 
 async function loadPilotStats() {
-    if (!currentSelectedUserId) {
-        document.getElementById("btn-load-stats").innerText = "Stats Unavailable (No ID)";
-        return;
+    if (!currentSelectedFlight || !currentSelectedFlight.userId) {
+        document.getElementById("btn-load-stats").innerText = "Stats Unavailable"; return;
     }
     const btn = document.getElementById("btn-load-stats");
     btn.innerText = "Loading..."; btn.disabled = true;
 
     try {
-        const res = await fetch(`${STATS_API_URL}?userId=${currentSelectedUserId}`);
+        const res = await fetch(`${API_URL}?action=stats&userId=${currentSelectedFlight.userId}`);
         const data = await res.json();
-        
         if (data.result && data.result.length > 0) {
             const stats = data.result[0];
             document.getElementById("stat-grade").innerText = `Grade ${stats.grade || "-"}`;
@@ -285,11 +211,16 @@ async function loadPilotStats() {
     } catch (e) { btn.innerText = "Error Loading Stats"; }
 }
 
+function updateCardBg() {
+    const c1 = document.getElementById("cardColor1").value; const c2 = document.getElementById("cardColor2").value;
+    document.getElementById("pilot-card-export").style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
 function downloadPilotCard() {
-    const cardElement = document.getElementById("pilot-card-export");
-    const callsign = document.getElementById("pc-callsign").innerText;
-    html2canvas(cardElement, { backgroundColor: null, scale: 2 }).then(canvas => {
-        const link = document.createElement("a"); link.download = `OrbitLive_${callsign}.png`; link.href = canvas.toDataURL("image/png"); link.click();
+    const card = document.getElementById("pilot-card-export");
+    const cs = document.getElementById("pc-callsign").innerText;
+    html2canvas(card, { backgroundColor: null, scale: 2 }).then(canvas => {
+        const link = document.createElement("a"); link.download = `OrbitLive_${cs}.png`; link.href = canvas.toDataURL("image/png"); link.click();
     });
 }
 
@@ -305,7 +236,6 @@ function openSettingsPanel() {
         document.getElementById("profile-view").classList.add("hidden");
     }
 }
-
 function openProfilePanel() { openSettingsPanel(); }
 
 function saveProfileSettings() {
@@ -319,7 +249,7 @@ async function fetchProfileStats(username) {
     document.getElementById("prof-name").innerText = username;
     document.getElementById("prof-va").innerText = "Loading stats...";
     try {
-        const res = await fetch(`${STATS_API_URL}?username=${username}`);
+        const res = await fetch(`${API_URL}?action=stats&username=${username}`);
         const data = await res.json();
         if (data.result && data.result.length > 0) {
             const stats = data.result[0];
@@ -330,15 +260,4 @@ async function fetchProfileStats(username) {
             document.getElementById("prof-atc").innerText = stats.atcOperations || 0;
         } else { document.getElementById("prof-va").innerText = "User not found."; }
     } catch(e) { document.getElementById("prof-va").innerText = "Error fetching stats."; }
-}
-
-function openPanel(panelId) {
-    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(panelId).classList.add('active');
-    document.getElementById("panel-overlay").classList.add('active');
-}
-
-function closeSidePanels() {
-    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById("panel-overlay").classList.remove('active');
 }
