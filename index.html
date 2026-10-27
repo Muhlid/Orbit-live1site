@@ -45,9 +45,20 @@
         <div class="main-container">
             <div id="tab-flights" class="tab-content active"><div class="table-container"><table class="data-table"><thead><tr><th onclick="setSort('callsign')">Callsign ⇅</th><th onclick="setSort('username')">Pilot ⇅</th><th onclick="setSort('aircraftName')">Aircraft ⇅</th><th onclick="setSort('liveryName')">Livery ⇅</th><th onclick="setSort('virtualOrganization')">VA / VO ⇅</th><th>Speed</th><th>Altitude</th></tr></thead><tbody id="flights-tbody"></tbody></table></div></div>
             <div id="tab-atc" class="tab-content"><div class="atc-grid"><div class="atc-column"><h3 style="color:var(--server-expert);">Expert ATC</h3><div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-expert-tbody"></tbody></table></div></div><div class="atc-column"><h3 style="color:var(--server-training);">Training ATC</h3><div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-training-tbody"></tbody></table></div></div></div></div>
-            <div id="tab-leaderboard" class="tab-content"><div class="table-container" style="max-width:800px; margin:0 auto;"><h2 style="text-align:center; color:var(--neon-cyan); margin-bottom:20px;">Top Virtual Organizations</h2><table class="data-table leaderboard-table"><thead><tr><th>Rank</th><th>Organization (VO)</th><th>Active Flights</th><th>Unique Pilots</th><th>VO Score</th></tr></thead><tbody id="vo-tbody"></tbody></table></div></div>
+                    <div id="tab-leaderboard" class="tab-content">
+            <div class="table-container" style="max-width:800px; margin:0 auto;">
+                <h2 style="text-align:center; color:var(--neon-cyan); margin-bottom:5px;">Top Virtual Organizations</h2>
+                <p style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:0; margin-bottom:20px;">
+                    💡 <strong>Nasıl Hesaplanır?</strong> VO Puanı = (Aktif Uçuş Sayısı × 2) + (Benzersiz Pilot Sayısı × 3)
+                </p>
+                <table class="data-table leaderboard-table">
+                    <thead><tr><th>Rank</th><th>Organization (VO)</th><th>Active Flights</th><th>Unique Pilots</th><th>VO Score</th></tr></thead>
+                    <tbody id="vo-tbody"></tbody>
+                </table>
+            </div>
         </div>
-    </div>
+
+        </div>
 
     <!-- PİLOT KARTI (YANDAN AÇILAN PANEL) -->
     <div id="pilot-side-panel" class="side-panel">
