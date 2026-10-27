@@ -81,6 +81,21 @@
                 <div class="pc-stat"><span class="lbl">Flight Time</span><span id="stat-time">-</span></div>
                 <div class="pc-stat"><span class="lbl">Landings</span><span id="stat-landings">-</span></div>
             </div>
+                <!-- YENİ: AKTİF UÇUŞ ROTASI -->
+            <div id="active-flight-route" class="hidden" style="margin-top: 15px;">
+                <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                    <div><span style="font-size:10px; color:gray;">DEP</span><br><strong id="pc-origin" style="color:var(--neon-cyan);">---</strong></div>
+                    <div><span style="font-size:10px; color:gray;">ARR</span><br><strong id="pc-dest" style="color:var(--neon-cyan);">---</strong></div>
+                </div>
+                
+                <button class="accordion-btn" onclick="toggleWaypoints()">📍 Show Waypoints ▾</button>
+                <div id="waypoints-container" class="accordion-content">
+                    <ul id="pc-waypoints-list" style="list-style:none; padding:0; margin:0; font-size:12px; color:#ccc;">
+                        <!-- JS Burayı dolduracak -->
+                    </ul>
+                </div>
+            </div>
+
             <div class="pc-watermark">OrbitLive Tracking System</div>
         </div>
         
