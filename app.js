@@ -1,10 +1,12 @@
 const API_URL = "https://orbtlive.vercel.app/api/flights"; 
+const STATS_API_URL = "https://orbtlive.vercel.app/api/stats"; 
 
 let flightsData = [];
 let atcData = [];
 let activeTab = "expert";
 let sortCol = "callsign";
 let sortAsc = true;
+let currentSelectedUserId = null; 
 
 async function fetchFlightData() {
     try {
@@ -15,12 +17,52 @@ async function fetchFlightData() {
         if (data.result) flightsData = data.result;
         if (data.atc) atcData = data.atc;
         
+        updateAtcBadges();
+        updateTrendingWidget();
         renderActiveTab();
     } catch(e) { console.error("Fetch Error:", e); }
 }
 
 fetchFlightData();
 setInterval(fetchFlightData, 15000); 
+
+function updateAtcBadges() {
+    const expertCount = atcData.filter(a => (a.serverName || "").toLowerCase().includes("expert")).length;
+    const trainingCount = atcData.filter(a => (a.serverName || "").toLowerCase().includes("training")).length;
+    
+    document.getElementById("badge-expert").innerText = `${expertCount} ATC`;
+    document.getElementById("badge-training").innerText = `${trainingCount} ATC`;
+}
+
+function updateTrendingWidget() {
+    const acCounts = {};
+    const atcZones = {};
+
+    flightsData.forEach(f => {
+        // En Popüler Uçaklar
+        const ac = f.aircraftName;
+        if (ac && ac !== "Unknown Aircraft") {
+            acCounts[ac] = (acCounts[ac] || 0) + 1;
+        }
+    });
+
+    atcData.forEach(a => {
+        // En Yoğun ATC Bölgeleri
+        const apt = a.airportName;
+        if (apt) {
+            atcZones[apt] = (atcZones[apt] || 0) + 1;
+        }
+    });
+
+    const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    const topZones = Object.entries(atcZones).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+    const acList = document.getElementById("trend-aircraft");
+    acList.innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("");
+
+    const zoneList = document.getElementById("trend-atc");
+    zoneList.innerHTML = topZones.map(item => `<li><span>${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} ATC</span></li>`).join("");
+}
 
 function switchTab(tabId) {
     activeTab = tabId;
@@ -44,19 +86,12 @@ function setSort(col) {
 
 function renderActiveTab() {
     const searchTerm = document.getElementById("globalSearch").value.toLowerCase();
-
-    if (activeTab === "leaderboard") {
-        renderLeaderboard();
-    } else if (activeTab === "atc") {
-        renderAtcTables(searchTerm);
-    } else {
-        renderFlightsTable(activeTab, searchTerm);
-    }
+    if (activeTab === "leaderboard") renderLeaderboard();
+    else if (activeTab === "atc") renderAtcTables(searchTerm);
+    else renderFlightsTable(activeTab, searchTerm);
 }
 
-// 1. UÇUŞ TABLOLARI (Sunucuya Göre Kusursuz Filtreleme)
 function renderFlightsTable(serverFilter, searchTerm) {
-    // API "Expert Server" gönderiyor, biz "expert" ile arıyoruz
     let filtered = flightsData.filter(f => (f.serverName || "").toLowerCase().includes(serverFilter));
     
     if (searchTerm) {
@@ -69,7 +104,6 @@ function renderFlightsTable(serverFilter, searchTerm) {
         );
     }
 
-    // A'dan Z'ye Sıralama
     filtered.sort((a, b) => {
         let valA = (a[sortCol] || "").toString().toLowerCase();
         let valB = (b[sortCol] || "").toString().toLowerCase();
@@ -83,7 +117,7 @@ function renderFlightsTable(serverFilter, searchTerm) {
     tbody.innerHTML = "";
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found on this server.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found.</td></tr>`;
         return;
     }
     
@@ -104,7 +138,6 @@ function renderFlightsTable(serverFilter, searchTerm) {
     });
 }
 
-// 2. ATC TABLOLARI
 function renderAtcTables(searchTerm) {
     const atcTypesMap = { 0:"GND", 1:"TWR", 2:"UNICOM", 3:"CLR", 4:"APP", 5:"DEP", 6:"CTR", 7:"ATIS" };
     
@@ -137,14 +170,11 @@ function renderAtcTables(searchTerm) {
     renderTable(filterAtc("training"), "atc-training-tbody");
 }
 
-// 3. VO LİDERLİK TABLOSU (Senin Formülün Birebir Uygulandı)
 function renderLeaderboard() {
     const voMap = {};
-
     flightsData.forEach(flight => {
         const vo = flight.virtualOrganization;
         const pilot = flight.callsign;
-
         if (vo && vo.trim() !== "" && vo.toLowerCase() !== "unknown") {
             if (!voMap[vo]) voMap[vo] = { count: 0, pilots: new Set() };
             voMap[vo].count++;
@@ -173,21 +203,13 @@ function renderLeaderboard() {
         if (index === 0) rankStr = `<span class="medal-1">🥇 1st</span>`;
         if (index === 1) rankStr = `<span class="medal-2">🥈 2nd</span>`;
         if (index === 2) rankStr = `<span class="medal-3">🥉 3rd</span>`;
-
-        tbody.innerHTML += `
-            <tr>
-                <td style="font-weight:bold;">${rankStr}</td>
-                <td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td>
-                <td>${entry.flights}</td>
-                <td>${entry.pilots}</td>
-                <td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td>
-            </tr>
-        `;
+        tbody.innerHTML += `<tr><td style="font-weight:bold;">${rankStr}</td><td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td><td>${entry.flights}</td><td>${entry.pilots}</td><td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td></tr>`;
     });
 }
 
-// 4. KART YÖNETİMİ
 function openPilotCard(f) {
+    currentSelectedUserId = f.userId; 
+    
     document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
     document.getElementById("pc-va").innerText = f.virtualOrganization || "-";
     document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
@@ -195,7 +217,13 @@ function openPilotCard(f) {
     document.getElementById("pc-livery").innerText = f.liveryName || "-";
     document.getElementById("pc-alt").innerText = `${Math.round(f.altitude)} ft`;
     document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
-    document.getElementById("pc-srv").innerText = f.serverName || "-";
+    document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
+
+    // İstatistik alanını sıfırla ve gizle
+    document.getElementById("live-stats-container").classList.add("hidden");
+    const btn = document.getElementById("btn-load-stats");
+    btn.innerText = "Load Live Stats";
+    btn.disabled = false;
 
     document.getElementById("pilot-card-modal").classList.add("active");
 }
@@ -210,14 +238,37 @@ function updateCardBg() {
     document.getElementById("pilot-card-export").style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
 }
 
+async function loadPilotStats() {
+    if (!currentSelectedUserId) return alert("Bu uçuş için Pilot ID bulunamadı.");
+    
+    const btn = document.getElementById("btn-load-stats");
+    btn.innerText = "Loading...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${STATS_API_URL}?userId=${currentSelectedUserId}`);
+        const data = await res.json();
+        
+        if (data.result && data.result.length > 0) {
+            const stats = data.result[0];
+            document.getElementById("stat-grade").innerText = `Grade ${stats.grade || "-"}`;
+            document.getElementById("stat-time").innerText = `${Math.round((stats.flightTime || 0) / 60)} hrs`;
+            document.getElementById("stat-landings").innerText = stats.landingCount || 0;
+            document.getElementById("live-stats-container").classList.remove("hidden");
+            btn.innerText = "Stats Loaded!";
+        } else {
+            btn.innerText = "Stats Unavailable";
+        }
+    } catch (e) {
+        console.error(e);
+        btn.innerText = "Error Loading Stats";
+    }
+}
+
 function downloadPilotCard() {
     const cardElement = document.getElementById("pilot-card-export");
     const callsign = document.getElementById("pc-callsign").innerText;
-
-    html2canvas(cardElement, { 
-        backgroundColor: null, 
-        scale: 2 
-    }).then(canvas => {
+    html2canvas(cardElement, { backgroundColor: null, scale: 2 }).then(canvas => {
         const link = document.createElement("a");
         link.download = `OrbitLive_PilotCard_${callsign}.png`;
         link.href = canvas.toDataURL("image/png");
