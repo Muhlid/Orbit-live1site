@@ -18,8 +18,9 @@ async function fetchFlightData() {
         renderActiveTab();
     } catch(e) { console.error("Fetch Error:", e); }
 }
+
 fetchFlightData();
-setInterval(fetchFlightData, 15000);
+setInterval(fetchFlightData, 15000); 
 
 function switchTab(tabId) {
     activeTab = tabId;
@@ -53,10 +54,9 @@ function renderActiveTab() {
     }
 }
 
-// ==========================================
-// UÇUŞ TABLOLARI (EKSİK VERİ KORUMASI EKLENDİ)
-// ==========================================
+// 1. UÇUŞ TABLOLARI (Sunucuya Göre Kusursuz Filtreleme)
 function renderFlightsTable(serverFilter, searchTerm) {
+    // API "Expert Server" gönderiyor, biz "expert" ile arıyoruz
     let filtered = flightsData.filter(f => (f.serverName || "").toLowerCase().includes(serverFilter));
     
     if (searchTerm) {
@@ -69,6 +69,7 @@ function renderFlightsTable(serverFilter, searchTerm) {
         );
     }
 
+    // A'dan Z'ye Sıralama
     filtered.sort((a, b) => {
         let valA = (a[sortCol] || "").toString().toLowerCase();
         let valB = (b[sortCol] || "").toString().toLowerCase();
@@ -83,137 +84,91 @@ function renderFlightsTable(serverFilter, searchTerm) {
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found on this server.</td></tr>`;
+        return;
     }
     
     filtered.forEach(f => {
-        // NULL/BOŞ VERİ KORUMASI
-        const cs = (f.callsign && f.callsign !== "null") ? f.callsign : "Unknown";
-        const un = (f.username && f.username !== "null") ? f.username : "Guest";
-        const ac = (f.aircraftName && f.aircraftName !== "null") ? f.aircraftName : "Unknown AC";
-        const liv = (f.liveryName && f.liveryName !== "null") ? f.liveryName : "Default";
-        const va = (f.virtualOrganization && f.virtualOrganization !== "null" && f.virtualOrganization.trim() !== "") ? f.virtualOrganization : "None";
-
+        const vaDisplay = f.virtualOrganization ? f.virtualOrganization : "-";
         const tr = document.createElement('tr');
-        tr.onclick = () => openPilotCard(f, cs, un, ac, liv, va);
+        tr.onclick = () => openPilotCard(f);
         tr.innerHTML = `
-            <td style="font-weight:bold; color:var(--neon-cyan);">${cs}</td>
-            <td>${un}</td>
-            <td>${ac}</td>
-            <td>${liv}</td>
-            <td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${va}</span></td>
-            <td>${Math.round(f.speed || 0)}</td>
-            <td>${Math.round(f.altitude || 0)}</td>
+            <td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td>
+            <td>${f.username}</td>
+            <td>${f.aircraftName}</td>
+            <td>${f.liveryName}</td>
+            <td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${vaDisplay}</span></td>
+            <td>${Math.round(f.speed)}</td>
+            <td>${Math.round(f.altitude)}</td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// ==========================================
-// ATC TABLOLARI (HAVALİMANINA GÖRE GRUPLANDIRMA VE CENTERS)
-// ==========================================
+// 2. ATC TABLOLARI
 function renderAtcTables(searchTerm) {
     const atcTypesMap = { 0:"GND", 1:"TWR", 2:"UNICOM", 3:"CLR", 4:"APP", 5:"DEP", 6:"CTR", 7:"ATIS" };
     
-    const processAtcData = (serverName, containerId) => {
-        const container = document.getElementById(containerId);
-        if(!container) return;
-        container.innerHTML = "";
+    const filterAtc = (srv) => atcData.filter(a => (a.serverName || "").toLowerCase().includes(srv) && 
+        ((a.airportName || "").toLowerCase().includes(searchTerm) || (a.username || "").toLowerCase().includes(searchTerm))
+    ).sort((a, b) => (a.airportName || "").localeCompare(b.airportName || ""));
 
-        let serverAtc = atcData.filter(a => (a.serverName || "").toLowerCase().includes(serverName));
-
-        if (searchTerm) {
-            serverAtc = serverAtc.filter(a => 
-                (a.airportName || "").toLowerCase().includes(searchTerm) || 
-                (a.username || "").toLowerCase().includes(searchTerm)
-            );
-        }
-
-        if (serverAtc.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:gray; padding:20px;">No ATC online</div>`;
+    const renderTable = (data, tbodyId) => {
+        const tbody = document.getElementById(tbodyId);
+        if(!tbody) return;
+        tbody.innerHTML = "";
+        
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray;">No ATC online</td></tr>`;
             return;
         }
 
-        // Havalimanına Göre Gruplandır
-        const grouped = {};
-        serverAtc.forEach(a => {
-            // Eğer tipi CTR (Center=6) ise veya havalimanı adı yoksa Centers grubuna at
-            let apt = a.airportName;
-            if (!apt || a.type === 6) apt = "CENTERS / FIR";
-            
-            if(!grouped[apt]) grouped[apt] = [];
-            grouped[apt].push(a);
-        });
-
-        // Grupları Ekrana Bas (Önce Centers, Sonra A-Z Havalimanları)
-        Object.keys(grouped).sort((a, b) => {
-            if(a === "CENTERS / FIR") return -1;
-            if(b === "CENTERS / FIR") return 1;
-            return a.localeCompare(b);
-        }).forEach(apt => {
-            
-            let rowsHtml = "";
-            // Aynı havalimanındaki kontrolörleri tipe göre sırala (Örn: ATIS, CLR, GND, TWR, APP)
-            grouped[apt].sort((a,b) => a.type - b.type).forEach(a => {
-                rowsHtml += `
-                    <div style="display:flex; justify-content:space-between; padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                        <span style="color:var(--neon-pink); font-size:12px; font-weight:bold; width:60px;">${atcTypesMap[a.type] || "ATC"}</span>
-                        <span style="color:#fff; font-size:14px; flex:1;">${a.username || "Controller"}</span>
-                        <span style="color:#00FF00; font-size:10px; font-weight:bold;">🟢 ON</span>
-                    </div>
-                `;
-            });
-
-            const boxHtml = `
-                <div style="background:var(--bg-panel); border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden;">
-                    <div style="background:rgba(0,0,0,0.5); padding:12px 15px; font-weight:bold; color:var(--neon-cyan); border-bottom:1px solid rgba(255,255,255,0.1); font-size:16px;">
-                        ${apt === "CENTERS / FIR" ? '🌍 ' : '✈️ '} ${apt}
-                    </div>
-                    <div style="display:flex; flex-direction:column;">
-                        ${rowsHtml}
-                    </div>
-                </div>
+        data.forEach(a => {
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-weight:bold;">${a.airportName || "CENTER"}</td>
+                    <td style="color:var(--neon-pink); font-size:12px;">${atcTypesMap[a.type] || "ATC"}</td>
+                    <td>${a.username || "Controller"}</td>
+                </tr>
             `;
-            container.innerHTML += boxHtml;
         });
     };
 
-    processAtcData("expert", "atc-expert-container");
-    processAtcData("training", "atc-training-container");
+    renderTable(filterAtc("expert"), "atc-expert-tbody");
+    renderTable(filterAtc("training"), "atc-training-tbody");
 }
 
-// ==========================================
-// VO LİDERLİK TABLOSU
-// ==========================================
+// 3. VO LİDERLİK TABLOSU (Senin Formülün Birebir Uygulandı)
 function renderLeaderboard() {
-    const vaStats = {};
+    const voMap = {};
 
-    flightsData.forEach(f => {
-        const va = f.virtualOrganization;
-        if (va && va !== "null" && va.trim() !== "" && va.toLowerCase() !== "none" && va.toLowerCase() !== "unknown") {
-            if (!vaStats[va]) vaStats[va] = { flights: 0, pilots: new Set() };
-            vaStats[va].flights++;
-            vaStats[va].pilots.add(f.username || f.callsign); 
+    flightsData.forEach(flight => {
+        const vo = flight.virtualOrganization;
+        const pilot = flight.callsign;
+
+        if (vo && vo.trim() !== "" && vo.toLowerCase() !== "unknown") {
+            if (!voMap[vo]) voMap[vo] = { count: 0, pilots: new Set() };
+            voMap[vo].count++;
+            voMap[vo].pilots.add(pilot);
         }
     });
 
-    const leaderboard = Object.keys(vaStats).map(va => {
-        const fltCount = vaStats[va].flights;
-        const pltCount = vaStats[va].pilots.size;
-        const score = (fltCount * 2) + (pltCount * 3); 
-        return { name: va, flights: fltCount, pilots: pltCount, score: score };
+    const scoredVOs = Object.entries(voMap).map(([vo, stats]) => {
+        const score = (stats.count * 2) + (stats.pilots.size * 3);
+        return { name: vo, flights: stats.count, pilots: stats.pilots.size, score: score };
     });
 
-    leaderboard.sort((a, b) => b.score - a.score);
+    scoredVOs.sort((a, b) => b.score - a.score);
 
     const tbody = document.getElementById("vo-tbody");
     if(!tbody) return;
     tbody.innerHTML = "";
 
-    if (leaderboard.length === 0) {
+    if (scoredVOs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">No VA data available.</td></tr>`;
+        return;
     }
 
-    leaderboard.forEach((vo, index) => {
+    scoredVOs.forEach((entry, index) => {
         let rankStr = `${index + 1}.`;
         if (index === 0) rankStr = `<span class="medal-1">🥇 1st</span>`;
         if (index === 1) rankStr = `<span class="medal-2">🥈 2nd</span>`;
@@ -222,27 +177,25 @@ function renderLeaderboard() {
         tbody.innerHTML += `
             <tr>
                 <td style="font-weight:bold;">${rankStr}</td>
-                <td style="color:var(--neon-cyan); font-weight:bold;">${vo.name}</td>
-                <td>${vo.flights}</td>
-                <td>${vo.pilots}</td>
-                <td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${vo.score} Pts</td>
+                <td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td>
+                <td>${entry.flights}</td>
+                <td>${entry.pilots}</td>
+                <td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td>
             </tr>
         `;
     });
 }
 
-// ==========================================
-// PİLOT KARTI VE İNDİRME MANTIĞI
-// ==========================================
-function openPilotCard(f, cs, un, ac, liv, va) {
-    document.getElementById("pc-callsign").innerText = cs;
-    document.getElementById("pc-va").innerText = va;
-    document.getElementById("pc-username").innerText = `Pilot: ${un}`;
-    document.getElementById("pc-ac").innerText = ac;
-    document.getElementById("pc-livery").innerText = liv;
-    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude || 0)} ft`;
-    document.getElementById("pc-spd").innerText = `${Math.round(f.speed || 0)} kts`;
-    document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
+// 4. KART YÖNETİMİ
+function openPilotCard(f) {
+    document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
+    document.getElementById("pc-va").innerText = f.virtualOrganization || "-";
+    document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
+    document.getElementById("pc-ac").innerText = f.aircraftName || "-";
+    document.getElementById("pc-livery").innerText = f.liveryName || "-";
+    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude)} ft`;
+    document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
+    document.getElementById("pc-srv").innerText = f.serverName || "-";
 
     document.getElementById("pilot-card-modal").classList.add("active");
 }
