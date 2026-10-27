@@ -214,11 +214,46 @@ function openPilotCard(f) {
     document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
     document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
 
+    // İstatistik alanını sıfırla
     document.getElementById("live-stats-container").classList.add("hidden");
     const btn = document.getElementById("btn-load-stats");
     btn.innerText = "Load Live Stats"; btn.disabled = false;
 
+    // Rota alanını sıfırla ve yükle
+    document.getElementById("active-flight-route").classList.add("hidden");
+    document.getElementById("waypoints-container").classList.remove("open");
+    document.getElementById("pc-origin").innerText = "Loading...";
+    document.getElementById("pc-dest").innerText = "Loading...";
+    document.getElementById("pc-waypoints-list").innerHTML = "";
+
+    // Uçuş planını Vercel API'den (Details) çek
+    fetch(`https://orbtlive.vercel.app/api/details?type=flightplan&session=${f.sessionId}&flight=${f.flightId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.route && data.route.length > 0) {
+                document.getElementById("active-flight-route").classList.remove("hidden");
+                document.getElementById("pc-origin").innerText = data.originAirport || "N/A";
+                document.getElementById("pc-dest").innerText = data.destinationAirport || "N/A";
+                
+                let wpHTML = "";
+                data.route.forEach(wp => {
+                    if (wp.name) {
+                        wpHTML += `<li class="wp-item"><span class="wp-icon">◆</span> <span>${wp.name}</span></li>`;
+                    }
+                });
+                
+                document.getElementById("pc-waypoints-list").innerHTML = wpHTML || "<li style='color:gray;'>No waypoints filed.</li>";
+            }
+        })
+        .catch(err => console.error("Flight plan fetch error:", err));
+
     openPanel("pilot-side-panel");
+}
+
+// Accordion (Açılır Kapanır) Menü Fonksiyonu
+function toggleWaypoints() {
+    const container = document.getElementById("waypoints-container");
+    container.classList.toggle("open");
 }
 
 function updateCardBg() {
