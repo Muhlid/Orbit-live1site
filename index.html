@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@
 
     <header id="top-bar" class="glass-panel">
         <div class="logo">
-            <span class="text-orbit">Orbit</span><span class="text-live">Board</span>
+            <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
         </div>
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="switchTab('expert')">Expert Server</button>
@@ -21,7 +21,7 @@
             <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
         </div>
         <div class="search-box">
-            <input type="text" id="globalSearch" class="search-input" placeholder="Arama yap..." oninput="renderActiveTab()">
+            <input type="text" id="globalSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="renderActiveTab()">
         </div>
     </header>
 
@@ -37,8 +37,8 @@
                             <th onclick="setSort('aircraftName')">Aircraft ⇅</th>
                             <th onclick="setSort('liveryName')">Livery ⇅</th>
                             <th onclick="setSort('virtualOrganization')">VA / VO ⇅</th>
-                            <th>Hız (Kts)</th>
-                            <th>İrtifa (Ft)</th>
+                            <th>Speed (Kts)</th>
+                            <th>Altitude (Ft)</th>
                         </tr>
                     </thead>
                     <tbody id="flights-tbody">
@@ -76,11 +76,11 @@
                 <table class="data-table leaderboard-table">
                     <thead>
                         <tr>
-                            <th>Sıra</th>
-                            <th>Organizasyon (VO)</th>
-                            <th>Aktif Uçuşlar</th>
-                            <th>Benzersiz Pilot</th>
-                            <th>VO Puanı</th>
+                            <th>Rank</th>
+                            <th>Organization (VO)</th>
+                            <th>Active Flights</th>
+                            <th>Unique Pilots</th>
+                            <th>VO Score</th>
                         </tr>
                     </thead>
                     <tbody id="vo-tbody">
@@ -90,12 +90,13 @@
         </div>
     </div>
 
+    <!-- PILOT CARD MODAL -->
     <div id="pilot-card-modal" class="modal-backdrop">
         <div class="glass-modal card-modal">
             <button class="glass-close" onclick="closePilotCard()">&#x2715;</button>
             
             <div class="card-customizer">
-                <label>Arka Plan Rengi (Düz veya Gradient):</label>
+                <label>Background Color (Solid or Gradient):</label>
                 <div style="display: flex; gap: 10px; margin-top: 5px;">
                     <input type="color" id="cardColor1" value="#0f0c29" onchange="updateCardBg()">
                     <input type="color" id="cardColor2" value="#302b63" onchange="updateCardBg()">
@@ -120,7 +121,7 @@
                 <div class="pc-watermark">OrbitLive Tracking System</div>
             </div>
 
-            <button class="glass-submit-btn" onclick="downloadPilotCard()">Kartı PNG Olarak İndir</button>
+            <button class="glass-submit-btn" onclick="downloadPilotCard()">Download Card as PNG</button>
         </div>
     </div>
 
