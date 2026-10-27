@@ -18,20 +18,20 @@
             <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
-            <input type="text" id="globalSearch" class="search-input" placeholder="Search..." oninput="renderActiveTab()">
+            <!-- Takılmayı önlemek için arama inputuna debounce/gecikme mantığı app.js'te eklendi -->
+            <input type="text" id="globalSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="handleSearch()">
             <button class="icon-btn" onclick="openProfilePanel()">👤 My Profile</button>
-            <button class="icon-btn" onclick="openSettingsPanel()">⚙️</button>
         </div>
     </header>
 
     <div class="dashboard-layout">
-        <!-- TRENDLER WIDGET -->
         <aside class="sidebar-widget">
             <h3 class="widget-title">🔥 Live Trends</h3>
             <select id="trendServer" class="glass-select-input" onchange="updateTrendingWidget()" style="width:100%; margin-bottom:15px; background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:5px;">
                 <option value="ALL">All Servers</option>
                 <option value="expert">Expert Server</option>
                 <option value="training">Training Server</option>
+                <option value="casual">Casual Server</option>
             </select>
             <div class="trend-section">
                 <span class="trend-label">Top Aircraft</span>
@@ -44,7 +44,6 @@
         </aside>
 
         <div class="main-container">
-            <!-- TABLOLAR -->
             <div id="tab-flights" class="tab-content active"><div class="table-container"><table class="data-table"><thead><tr><th onclick="setSort('callsign')">Callsign ⇅</th><th onclick="setSort('username')">Pilot ⇅</th><th onclick="setSort('aircraftName')">Aircraft ⇅</th><th onclick="setSort('liveryName')">Livery ⇅</th><th onclick="setSort('virtualOrganization')">VA / VO ⇅</th><th>Speed</th><th>Altitude</th></tr></thead><tbody id="flights-tbody"></tbody></table></div></div>
             <div id="tab-atc" class="tab-content"><div class="atc-grid"><div class="atc-column"><h3 style="color:var(--server-expert);">Expert ATC</h3><div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-expert-tbody"></tbody></table></div></div><div class="atc-column"><h3 style="color:var(--server-training);">Training ATC</h3><div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-training-tbody"></tbody></table></div></div></div></div>
             <div id="tab-leaderboard" class="tab-content"><div class="table-container" style="max-width:800px; margin:0 auto;"><h2 style="text-align:center; color:var(--neon-cyan); margin-bottom:20px;">Top Virtual Organizations</h2><table class="data-table leaderboard-table"><thead><tr><th>Rank</th><th>Organization (VO)</th><th>Active Flights</th><th>Unique Pilots</th><th>VO Score</th></tr></thead><tbody id="vo-tbody"></tbody></table></div></div>
@@ -89,7 +88,7 @@
         <button class="glass-submit-btn" onclick="downloadPilotCard()">Export PNG</button>
     </div>
 
-    <!-- PROFİL / AYARLAR PANELİ (YANDAN AÇILAN PANEL) -->
+    <!-- PROFİL PANELİ -->
     <div id="profile-side-panel" class="side-panel">
         <button class="glass-close" onclick="closeSidePanels()">&#x2715;</button>
         
@@ -125,12 +124,9 @@
                     <div id="prof-atc" style="font-size:24px; font-weight:bold; color:var(--neon-pink);">-</div>
                 </div>
             </div>
-            
             <button class="glass-submit-btn" style="background:transparent; border:1px solid #FF007F; color:#FF007F; margin-top:20px;" onclick="logoutProfile()">Logout</button>
         </div>
     </div>
-
-    <!-- Arka plan kararartma (Paneller açıkken) -->
     <div id="panel-overlay" class="panel-overlay" onclick="closeSidePanels()"></div>
 
     <script src="app.js"></script>
