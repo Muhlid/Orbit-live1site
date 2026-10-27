@@ -34,15 +34,12 @@ function updateTrendingWidget() {
     flightsData.forEach(f => {
         if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
         
-        // Uçak Sayımı
         const ac = f.aircraftName;
         if (ac && ac !== "Unknown Aircraft") acCounts[ac] = (acCounts[ac] || 0) + 1;
         
-        // Kalkış (Origin) Sayımı
         const dep = f.originAirport;
         if (dep && dep !== "N/A" && dep !== "Loading" && dep.length > 2) depCounts[dep] = (depCounts[dep] || 0) + 1;
 
-        // Varış (Destination) Sayımı
         const arr = f.destinationAirport;
         if (arr && arr !== "N/A" && arr !== "Loading" && arr.length > 2) arrCounts[arr] = (arrCounts[arr] || 0) + 1;
     });
@@ -52,8 +49,10 @@ function updateTrendingWidget() {
     const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
 
     document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
-    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Flt</span></li>`).join("") || "<li>Populating...</li>";
-    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Flt</span></li>`).join("") || "<li>Populating...</li>";
+    
+    // BURASI DEĞİŞTİ: Artık "Flt" yerine kaç uçağın kalktığı/indiği yazıyor.
+    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Departing</span></li>`).join("") || "<li>Loading...</li>";
+    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arriving</span></li>`).join("") || "<li>Loading...</li>";
 }
 
 function switchTab(tabId) {
