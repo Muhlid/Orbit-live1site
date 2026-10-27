@@ -24,7 +24,7 @@
     </header>
 
     <div class="dashboard-layout">
-        <aside class="sidebar-widget">
+                <aside class="sidebar-widget">
             <h3 class="widget-title">🔥 Live Trends</h3>
             <select id="trendServer" class="glass-select-input" onchange="updateTrendingWidget()" style="width:100%; margin-bottom:15px; background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:5px;">
                 <option value="ALL">All Servers</option>
@@ -32,13 +32,20 @@
                 <option value="training">Training Server</option>
                 <option value="casual">Casual Server</option>
             </select>
+            
             <div class="trend-section">
                 <span class="trend-label">Top Aircraft</span>
                 <ul id="trend-aircraft" class="trend-list">Loading...</ul>
             </div>
-            <div class="trend-section" style="margin-top: 20px;">
-                <span class="trend-label">Busiest Regions</span>
-                <ul id="trend-atc" class="trend-list">Loading...</ul>
+            
+            <div class="trend-section" style="margin-top: 15px;">
+                <span class="trend-label">Top Departures (DEP)</span>
+                <ul id="trend-dep" class="trend-list">Loading...</ul>
+            </div>
+
+            <div class="trend-section" style="margin-top: 15px;">
+                <span class="trend-label">Top Arrivals (ARR)</span>
+                <ul id="trend-arr" class="trend-list">Loading...</ul>
             </div>
         </aside>
 
