@@ -7,6 +7,7 @@ let activeTab = "expert";
 let sortCol = "callsign";
 let sortAsc = true;
 let currentSelectedUserId = null; 
+let searchTimeout = null;
 
 async function fetchFlightData() {
     try {
@@ -75,6 +76,14 @@ function setSort(col) {
     renderActiveTab();
 }
 
+// TAKILMA ÖNLEYİCİ: Arama gecikmesi (Debounce)
+function handleSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        renderActiveTab();
+    }, 300); // 300ms bekle, gereksiz DOM yükünü engelle
+}
+
 function renderActiveTab() {
     const searchTerm = document.getElementById("globalSearch").value.toLowerCase();
     if (activeTab === "leaderboard") renderLeaderboard(searchTerm);
@@ -82,6 +91,7 @@ function renderActiveTab() {
     else renderFlightsTable(activeTab, searchTerm);
 }
 
+// PERFORMANS: DocumentFragment kullanımı ile takılmalar giderildi
 function renderFlightsTable(serverFilter, searchTerm) {
     let filtered = flightsData.filter(f => (f.serverName || "").toLowerCase().includes(serverFilter));
     
@@ -105,10 +115,13 @@ function renderFlightsTable(serverFilter, searchTerm) {
 
     const tbody = document.getElementById("flights-tbody");
     if(!tbody) return;
-    tbody.innerHTML = "";
-
-    if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found.</td></tr>`; return; }
     
+    if (filtered.length === 0) { 
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:gray;">No flights found.</td></tr>`; 
+        return; 
+    }
+    
+    const fragment = document.createDocumentFragment();
     filtered.forEach(f => {
         const tr = document.createElement('tr');
         tr.onclick = () => openPilotCard(f);
@@ -118,8 +131,11 @@ function renderFlightsTable(serverFilter, searchTerm) {
             <td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td>
             <td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    tbody.innerHTML = ""; 
+    tbody.appendChild(fragment); // Tek seferde basarak kasmayı bitirir
 }
 
 function renderAtcTables(searchTerm) {
@@ -131,12 +147,17 @@ function renderAtcTables(searchTerm) {
     const renderTable = (data, tbodyId) => {
         const tbody = document.getElementById(tbodyId);
         if(!tbody) return;
-        tbody.innerHTML = "";
+        
         if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray;">No ATC online</td></tr>`; return; }
 
+        const fragment = document.createDocumentFragment();
         data.forEach(a => {
-            tbody.innerHTML += `<tr><td style="font-weight:bold;">${a.airportName || "CENTER"}</td><td style="color:var(--neon-pink); font-size:12px;">${typesMap[a.type] || "ATC"}</td><td>${a.username || "Controller"}</td></tr>`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="font-weight:bold;">${a.airportName || "CENTER"}</td><td style="color:var(--neon-pink); font-size:12px;">${typesMap[a.type] || "ATC"}</td><td>${a.username || "Controller"}</td>`;
+            fragment.appendChild(tr);
         });
+        tbody.innerHTML = "";
+        tbody.appendChild(fragment);
     };
 
     renderTable(filterAtc("expert"), "atc-expert-tbody");
@@ -158,29 +179,30 @@ function renderLeaderboard(searchTerm) {
         return { name: vo, flights: stats.count, pilots: stats.pilots.size, score: (stats.count * 2) + (stats.pilots.size * 3) };
     });
 
-    // VA ARAMA FİLTRESİ
     if (searchTerm) {
         scoredVOs = scoredVOs.filter(vo => vo.name.toLowerCase().includes(searchTerm));
     }
-
     scoredVOs.sort((a, b) => b.score - a.score);
 
     const tbody = document.getElementById("vo-tbody");
     if(!tbody) return;
-    tbody.innerHTML = "";
-
+    
     if (scoredVOs.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray;">No VA found.</td></tr>`; return; }
 
+    const fragment = document.createDocumentFragment();
     scoredVOs.forEach((entry, index) => {
         let rankStr = `${index + 1}.`;
         if (index === 0) rankStr = `<span class="medal-1">🥇 1st</span>`;
         if (index === 1) rankStr = `<span class="medal-2">🥈 2nd</span>`;
         if (index === 2) rankStr = `<span class="medal-3">🥉 3rd</span>`;
-        tbody.innerHTML += `<tr><td style="font-weight:bold;">${rankStr}</td><td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td><td>${entry.flights}</td><td>${entry.pilots}</td><td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td></tr>`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-weight:bold;">${rankStr}</td><td style="color:var(--neon-cyan); font-weight:bold;">${entry.name}</td><td>${entry.flights}</td><td>${entry.pilots}</td><td style="color:var(--neon-pink); font-weight:bold; font-size:16px;">${entry.score} Pts</td>`;
+        fragment.appendChild(tr);
     });
+    tbody.innerHTML = "";
+    tbody.appendChild(fragment);
 }
 
-// YANDAN AÇILAN PANELLER (MODAL YERİNE)
 function openPilotCard(f) {
     currentSelectedUserId = f.userId; 
     document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
@@ -206,7 +228,10 @@ function updateCardBg() {
 }
 
 async function loadPilotStats() {
-    if (!currentSelectedUserId) return alert("UserId not found for this flight.");
+    if (!currentSelectedUserId) {
+        document.getElementById("btn-load-stats").innerText = "Stats Unavailable (No ID)";
+        return;
+    }
     const btn = document.getElementById("btn-load-stats");
     btn.innerText = "Loading..."; btn.disabled = true;
 
@@ -222,7 +247,7 @@ async function loadPilotStats() {
             document.getElementById("live-stats-container").classList.remove("hidden");
             btn.innerText = "Stats Loaded!";
         } else { btn.innerText = "Stats Unavailable"; }
-    } catch (e) { btn.innerText = "Error"; }
+    } catch (e) { btn.innerText = "Error Loading Stats"; }
 }
 
 function downloadPilotCard() {
@@ -233,7 +258,6 @@ function downloadPilotCard() {
     });
 }
 
-// PROFIL SISTEMI
 function openSettingsPanel() {
     openPanel("profile-side-panel");
     const savedUser = localStorage.getItem("if_username");
@@ -251,16 +275,10 @@ function openProfilePanel() { openSettingsPanel(); }
 
 function saveProfileSettings() {
     const input = document.getElementById("ifUsernameInput").value.trim();
-    if(input) {
-        localStorage.setItem("if_username", input);
-        openSettingsPanel();
-    }
+    if(input) { localStorage.setItem("if_username", input); openSettingsPanel(); }
 }
 
-function logoutProfile() {
-    localStorage.removeItem("if_username");
-    openSettingsPanel();
-}
+function logoutProfile() { localStorage.removeItem("if_username"); openSettingsPanel(); }
 
 async function fetchProfileStats(username) {
     document.getElementById("prof-name").innerText = username;
@@ -275,9 +293,7 @@ async function fetchProfileStats(username) {
             document.getElementById("prof-time").innerText = `${Math.round((stats.flightTime || 0) / 60)} hrs`;
             document.getElementById("prof-landings").innerText = stats.landingCount || 0;
             document.getElementById("prof-atc").innerText = stats.atcOperations || 0;
-        } else {
-            document.getElementById("prof-va").innerText = "User not found in API.";
-        }
+        } else { document.getElementById("prof-va").innerText = "User not found."; }
     } catch(e) { document.getElementById("prof-va").innerText = "Error fetching stats."; }
 }
 
