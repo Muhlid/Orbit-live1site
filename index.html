@@ -10,14 +10,12 @@
 <body>
 
     <header id="top-bar" class="glass-panel">
-        <div class="logo">
-            <span class="text-orbit">Orbit</span><span class="text-live">Live</span>
-        </div>
+        <div class="logo"><span class="text-orbit">Orbit</span><span class="text-live">Board</span></div>
         <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('expert')">Expert Server</button>
-            <button class="tab-btn" onclick="switchTab('training')">Training Server</button>
-            <button class="tab-btn" onclick="switchTab('casual')">Casual Server</button>
-            <button class="tab-btn" onclick="switchTab('atc')">ATC Live</button>
+            <button class="tab-btn active" onclick="switchTab('expert')">Expert <span id="badge-expert" class="atc-badge">0 ATC</span></button>
+            <button class="tab-btn" onclick="switchTab('training')">Training <span id="badge-training" class="atc-badge">0 ATC</span></button>
+            <button class="tab-btn" onclick="switchTab('casual')">Casual</button>
+            <button class="tab-btn" onclick="switchTab('atc')">ATC Directory</button>
             <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
         </div>
         <div class="search-box">
@@ -25,77 +23,72 @@
         </div>
     </header>
 
-    <div class="main-container">
-        
-        <!-- FLIGHTS TAB -->
-        <div id="tab-flights" class="tab-content active">
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th onclick="setSort('callsign')">Callsign ⇅</th>
-                            <th onclick="setSort('username')">Pilot ⇅</th>
-                            <th onclick="setSort('aircraftName')">Aircraft ⇅</th>
-                            <th onclick="setSort('liveryName')">Livery ⇅</th>
-                            <th onclick="setSort('virtualOrganization')">VA / VO ⇅</th>
-                            <th>Speed (Kts)</th>
-                            <th>Altitude (Ft)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="flights-tbody">
-                        <!-- JS Fill -->
-                    </tbody>
-                </table>
+    <div class="dashboard-layout">
+        <!-- SOL PANEL: TRENDLER WIDGET'I -->
+        <aside class="sidebar-widget">
+            <h3 class="widget-title">🔥 Live Trends</h3>
+            <div class="trend-section">
+                <span class="trend-label">Top Aircraft</span>
+                <ul id="trend-aircraft" class="trend-list">Loading...</ul>
             </div>
-        </div>
+            <div class="trend-section" style="margin-top: 20px;">
+                <span class="trend-label">Busiest ATC Zones</span>
+                <ul id="trend-atc" class="trend-list">Loading...</ul>
+            </div>
+        </aside>
 
-        <!-- ATC TAB (YENİ GRUPLANDIRILMIŞ TASARIM) -->
-        <div id="tab-atc" class="tab-content">
-            <div class="atc-grid">
-                <div class="atc-column">
-                    <h3 style="color: var(--server-expert); margin-bottom: 15px; border-bottom: 1px solid rgba(0,255,0,0.3); padding-bottom: 10px;">Expert ATC</h3>
-                    <div id="atc-expert-container" class="atc-list-wrapper">
-                        <!-- JS Fill -->
-                    </div>
-                </div>
-                <div class="atc-column">
-                    <h3 style="color: var(--server-training); margin-bottom: 15px; border-bottom: 1px solid rgba(255,234,0,0.3); padding-bottom: 10px;">Training ATC</h3>
-                    <div id="atc-training-container" class="atc-list-wrapper">
-                         <!-- JS Fill -->
-                    </div>
+        <!-- SAĞ PANEL: ANA İÇERİK -->
+        <div class="main-container">
+            <div id="tab-flights" class="tab-content active">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th onclick="setSort('callsign')">Callsign ⇅</th>
+                                <th onclick="setSort('username')">Pilot ⇅</th>
+                                <th onclick="setSort('aircraftName')">Aircraft ⇅</th>
+                                <th onclick="setSort('liveryName')">Livery ⇅</th>
+                                <th onclick="setSort('virtualOrganization')">VA / VO ⇅</th>
+                                <th>Speed (Kts)</th>
+                                <th>Altitude (Ft)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flights-tbody"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
 
-        <!-- LEADERBOARD TAB -->
-        <div id="tab-leaderboard" class="tab-content">
-            <div class="table-container" style="max-width: 800px; margin: 0 auto;">
-                <h2 style="text-align:center; color: var(--neon-cyan); margin-bottom: 20px;">Top Virtual Organizations</h2>
-                <table class="data-table leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Organization (VO)</th>
-                            <th>Active Flights</th>
-                            <th>Unique Pilots</th>
-                            <th>VO Score</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vo-tbody">
-                         <!-- JS Fill -->
-                    </tbody>
-                </table>
+            <div id="tab-atc" class="tab-content">
+                <div class="atc-grid">
+                    <div class="atc-column">
+                        <h3 style="color: var(--server-expert);">Expert ATC</h3>
+                        <div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-expert-tbody"></tbody></table></div>
+                    </div>
+                    <div class="atc-column">
+                        <h3 style="color: var(--server-training);">Training ATC</h3>
+                        <div class="table-container"><table class="data-table"><thead><tr><th>ICAO</th><th>Type</th><th>Controller</th></tr></thead><tbody id="atc-training-tbody"></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-leaderboard" class="tab-content">
+                <div class="table-container" style="max-width: 800px; margin: 0 auto;">
+                    <h2 style="text-align:center; color: var(--neon-cyan); margin-bottom: 20px;">Top Virtual Organizations</h2>
+                    <table class="data-table leaderboard-table">
+                        <thead><tr><th>Rank</th><th>Organization (VO)</th><th>Active Flights</th><th>Unique Pilots</th><th>VO Score</th></tr></thead>
+                        <tbody id="vo-tbody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- PILOT CARD MODAL -->
+    <!-- PİLOT KART MODALI -->
     <div id="pilot-card-modal" class="modal-backdrop">
         <div class="glass-modal card-modal">
             <button class="glass-close" onclick="closePilotCard()">&#x2715;</button>
-            
             <div class="card-customizer">
-                <label>Background Color (Solid or Gradient):</label>
+                <label>Background Color:</label>
                 <div style="display: flex; gap: 10px; margin-top: 5px;">
                     <input type="color" id="cardColor1" value="#0f0c29" onchange="updateCardBg()">
                     <input type="color" id="cardColor2" value="#302b63" onchange="updateCardBg()">
@@ -117,10 +110,21 @@
                     <div class="pc-stat"><span class="lbl">Server</span><span id="pc-srv" style="color: var(--neon-cyan);">---</span></div>
                     <div class="pc-stat"><span class="lbl">Status</span><span style="color: #00FF00;">🟢 Airborne</span></div>
                 </div>
+
+                <!-- API İLE ÇEKİLECEK CANLI İSTATİSTİKLER -->
+                <div id="live-stats-container" class="live-stats-box hidden">
+                    <div class="pc-stat"><span class="lbl">Grade</span><span id="stat-grade" style="color: gold;">-</span></div>
+                    <div class="pc-stat"><span class="lbl">Flight Time</span><span id="stat-time">-</span></div>
+                    <div class="pc-stat"><span class="lbl">Landings</span><span id="stat-landings">-</span></div>
+                </div>
+
                 <div class="pc-watermark">OrbitLive Tracking System</div>
             </div>
-
-            <button class="glass-submit-btn" onclick="downloadPilotCard()">Download Card as PNG</button>
+            
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-load-stats" class="glass-submit-btn" style="background: rgba(255,255,255,0.1); color: #fff;" onclick="loadPilotStats()">Load Live Stats</button>
+                <button class="glass-submit-btn" onclick="downloadPilotCard()">Export PNG</button>
+            </div>
         </div>
     </div>
 
