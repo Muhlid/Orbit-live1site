@@ -18,7 +18,6 @@
             <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
-            <!-- Takılmayı önlemek için arama inputuna debounce/gecikme mantığı app.js'te eklendi -->
             <input type="text" id="globalSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="handleSearch()">
             <button class="icon-btn" onclick="openProfilePanel()">👤 My Profile</button>
         </div>
@@ -52,11 +51,13 @@
 
     <!-- PİLOT KARTI (YANDAN AÇILAN PANEL) -->
     <div id="pilot-side-panel" class="side-panel">
-        <button class="glass-close" onclick="closeSidePanels()">&#x2715;</button>
-        <h2 style="margin-top:0; color:var(--neon-cyan);">Pilot Card</h2>
+        <div class="panel-header">
+            <h2 style="margin:0; color:var(--neon-cyan);">Pilot Card</h2>
+            <button class="panel-close-btn" onclick="closeSidePanels()">&#x2715;</button>
+        </div>
         
         <div class="card-customizer">
-            <label style="font-size:12px; color:gray;">Card Background Colors:</label>
+            <label style="font-size:12px; color:gray;">Background Colors:</label>
             <div style="display: flex; gap: 10px; margin-top: 5px; margin-bottom:15px;">
                 <input type="color" id="cardColor1" value="#0f0c29" onchange="updateCardBg()">
                 <input type="color" id="cardColor2" value="#302b63" onchange="updateCardBg()">
@@ -76,42 +77,46 @@
                 <div class="pc-stat"><span class="lbl">Speed</span><span id="pc-spd">--- kts</span></div>
                 <div class="pc-stat"><span class="lbl">Server</span><span id="pc-srv" style="color:var(--neon-cyan);">---</span></div>
             </div>
+
+            <!-- CANLI İSTATİSTİKLER -->
             <div id="live-stats-container" class="live-stats-box hidden">
                 <div class="pc-stat"><span class="lbl">Grade</span><span id="stat-grade" style="color:gold;">-</span></div>
                 <div class="pc-stat"><span class="lbl">Flight Time</span><span id="stat-time">-</span></div>
                 <div class="pc-stat"><span class="lbl">Landings</span><span id="stat-landings">-</span></div>
             </div>
-                <!-- YENİ: AKTİF UÇUŞ ROTASI -->
+
+            <!-- ROTA (WAYPOINTS) BÖLÜMÜ -->
             <div id="active-flight-route" class="hidden" style="margin-top: 15px;">
                 <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                     <div><span style="font-size:10px; color:gray;">DEP</span><br><strong id="pc-origin" style="color:var(--neon-cyan);">---</strong></div>
                     <div><span style="font-size:10px; color:gray;">ARR</span><br><strong id="pc-dest" style="color:var(--neon-cyan);">---</strong></div>
                 </div>
-                
                 <button class="accordion-btn" onclick="toggleWaypoints()">📍 Show Waypoints ▾</button>
                 <div id="waypoints-container" class="accordion-content">
-                    <ul id="pc-waypoints-list" style="list-style:none; padding:0; margin:0; font-size:12px; color:#ccc;">
-                        <!-- JS Burayı dolduracak -->
-                    </ul>
+                    <ul id="pc-waypoints-list" style="list-style:none; padding:0; margin:0; font-size:12px; color:#ccc;"></ul>
                 </div>
             </div>
 
             <div class="pc-watermark">OrbitLive Tracking System</div>
         </div>
         
-        <button id="btn-load-stats" class="glass-submit-btn" style="background:rgba(255,255,255,0.1); color:#fff; margin-bottom:10px;" onclick="loadPilotStats()">Load Live Stats</button>
-        <button class="glass-submit-btn" onclick="downloadPilotCard()">Export PNG</button>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+            <button id="btn-load-stats" class="glass-submit-btn" style="background:rgba(255,255,255,0.1); color:#fff;" onclick="loadPilotStats()">Load Live Stats</button>
+            <button class="glass-submit-btn" onclick="downloadPilotCard()">Export PNG</button>
+        </div>
     </div>
 
     <!-- PROFİL PANELİ -->
     <div id="profile-side-panel" class="side-panel">
-        <button class="glass-close" onclick="closeSidePanels()">&#x2715;</button>
+        <div class="panel-header">
+            <h2 style="margin:0; color:var(--neon-cyan);">My Profile</h2>
+            <button class="panel-close-btn" onclick="closeSidePanels()">&#x2715;</button>
+        </div>
         
         <div id="settings-view">
-            <h2 style="margin-top:0; color:var(--neon-cyan);">Account Settings</h2>
-            <p style="font-size:13px; color:gray;">Enter your Infinite Flight Community Username to view your live stats directly on the dashboard.</p>
+            <p style="font-size:13px; color:gray;">Enter your Infinite Flight Username to see your stats.</p>
             <input type="text" id="ifUsernameInput" class="search-input" style="width:100%; margin-bottom:15px;" placeholder="e.g. Cameron">
-            <button class="glass-submit-btn" onclick="saveProfileSettings()">Save & Load Profile</button>
+            <button class="glass-submit-btn" onclick="saveProfileSettings()">Save Profile</button>
         </div>
 
         <div id="profile-view" class="hidden" style="margin-top:20px;">
@@ -122,22 +127,10 @@
             </div>
             
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:11px; color:gray; text-transform:uppercase;">Grade</div>
-                    <div id="prof-grade" style="font-size:24px; font-weight:bold; color:gold;">-</div>
-                </div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:11px; color:gray; text-transform:uppercase;">Flight Time</div>
-                    <div id="prof-time" style="font-size:24px; font-weight:bold;">-</div>
-                </div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:11px; color:gray; text-transform:uppercase;">Landings</div>
-                    <div id="prof-landings" style="font-size:24px; font-weight:bold;">-</div>
-                </div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;">
-                    <div style="font-size:11px; color:gray; text-transform:uppercase;">ATC Ops</div>
-                    <div id="prof-atc" style="font-size:24px; font-weight:bold; color:var(--neon-pink);">-</div>
-                </div>
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">GRADE</div><div id="prof-grade" style="font-size:24px; font-weight:bold; color:gold;">-</div></div>
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">TIME</div><div id="prof-time" style="font-size:24px; font-weight:bold;">-</div></div>
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">LANDINGS</div><div id="prof-landings" style="font-size:24px; font-weight:bold;">-</div></div>
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">ATC OPS</div><div id="prof-atc" style="font-size:24px; font-weight:bold; color:var(--neon-pink);">-</div></div>
             </div>
             <button class="glass-submit-btn" style="background:transparent; border:1px solid #FF007F; color:#FF007F; margin-top:20px;" onclick="logoutProfile()">Logout</button>
         </div>
