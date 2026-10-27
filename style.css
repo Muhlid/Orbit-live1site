@@ -146,3 +146,34 @@ body, html { margin: 0; padding: 0; min-height: 100vh; background-color: var(--b
 .accordion-content.open { max-height: 180px; overflow-y: auto; padding: 10px; border: 1px solid rgba(255,255,255,0.05); margin-top:5px; }
 .wp-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; display: flex; gap: 8px; align-items: center; }
 .wp-icon { color: var(--neon-pink); font-size: 10px; }
+/* ------------------------------------------- */
+/* TABLET VE BİLGİSAYAR (YATAY) EKRAN UYUMU    */
+/* ------------------------------------------- */
+.dashboard-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Ekran 800px'den büyükse (Tablet Yatay ve PC) */
+@media (min-width: 800px) {
+    .dashboard-layout {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    
+    .sidebar-widget {
+        flex: 0 0 280px; /* Trend menüsü solda 280px sabit kalır */
+        position: sticky; /* Ekranda aşağı kaysan bile menü hep gözükür */
+        top: 90px;
+    }
+    
+    .main-container {
+        flex: 1; /* Tablolar sağdaki tüm boş alanı kaplar */
+        min-width: 0; /* Tabloların ekranı taşırmasını kesin engeller */
+    }
+    
+    .side-panel {
+        width: 450px; /* Tablet/PC'de yan panel biraz daha ferah açılır */
+    }
+}
