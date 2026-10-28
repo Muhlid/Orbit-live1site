@@ -16,6 +16,7 @@
             <button class="tab-btn" onclick="switchTab('casual')">Casual</button>
             <button class="tab-btn" onclick="switchTab('atc')">ATC Directory</button>
             <button class="tab-btn" onclick="switchTab('leaderboard')">VO Leaderboard</button>
+            <button class="tab-btn" onclick="switchTab('planner')">✨ AI Planner</button>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
             <input type="text" id="globalSearch" class="search-input" placeholder="Search Callsign, Pilot or VA..." oninput="handleSearch()">
@@ -82,6 +83,20 @@
                 <h3 style="color:var(--server-training); margin-bottom:15px;">Training ATC</h3>
                 <div id="atc-training-list" class="atc-list-container"></div>
             </div>
+        </div>
+    </div>
+
+            <!-- AI PLANNER TAB -->
+    <div id="tab-planner" class="tab-content">
+        <div class="table-container" style="max-width:800px; margin:0 auto; padding:30px; text-align:center;">
+            <h2 style="color:var(--neon-cyan); margin-bottom:10px;">🧠 AI Dispatch & Route Planner</h2>
+            <p style="color:gray; font-size:14px; margin-bottom:25px;">Analyzing global ATC networks and real-time NOAA satellite weather to find the best route...</p>
+            
+            <button class="glass-submit-btn" onclick="generateFlightBriefing()" style="padding:12px 24px; font-size:16px; background:rgba(0,245,212,0.1); color:var(--neon-cyan); border:1px solid var(--neon-cyan); cursor:pointer;">
+                🚀 Generate Smart Route
+            </button>
+            
+            <div id="planner-results" style="margin-top:30px; text-align:left;"></div>
         </div>
     </div>
 
