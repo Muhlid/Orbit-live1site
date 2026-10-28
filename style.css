@@ -177,3 +177,21 @@ body, html { margin: 0; padding: 0; min-height: 100vh; background-color: var(--b
         width: 450px; /* Tablet/PC'de yan panel biraz daha ferah açılır */
     }
 }
+/* ATC GRUPLANDIRMA TASARIMI */
+.atc-list-container { display: flex; flex-direction: column; gap: 15px; }
+.atc-group-title { font-size: 14px; color: var(--neon-cyan); font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px; text-transform: uppercase; }
+.atc-airport-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; }
+.atc-airport-header { background: rgba(255,255,255,0.1); padding: 8px 12px; font-weight: bold; font-size: 15px; letter-spacing: 1px; color: #fff; display: flex; justify-content: space-between; }
+.atc-facilities { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.atc-fac-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 5px; }
+.atc-fac-row:last-child { border-bottom: none; padding-bottom: 0; }
+.atc-type { font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: bold; background: rgba(255,255,255,0.1); width: 45px; text-align: center; }
+.atc-user { font-size: 13px; color: #ccc; }
+.atc-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; }
+
+/* ATC Renk Kodları */
+.t-7 { color: #00E5FF; } /* ATIS */
+.t-3, .t-0 { color: #FFB300; } /* CLR & GND */
+.t-1 { color: #FF1744; } /* TWR */
+.t-4, .t-5 { color: #00E676; } /* APP & DEP */
+.t-6 { color: #D500F9; border: 1px solid #D500F9; } /* CENTER */
