@@ -105,7 +105,6 @@ function renderFlightsTable(serverFilter, searchTerm) {
 
 function renderAtcTables(searchTerm) {
     const typesMap = { 0:"GND", 1:"TWR", 2:"UNICOM", 3:"CLR", 4:"APP", 5:"DEP", 6:"CTR", 7:"ATIS" };
-    // Mantıksal sıralama: ATIS(7) -> CLR(3) -> GND(0) -> TWR(1) -> DEP(5) -> APP(4)
     const typeOrder = [7, 3, 0, 1, 5, 4]; 
 
     const buildHtml = (srv) => {
@@ -120,50 +119,59 @@ function renderAtcTables(searchTerm) {
         let centers = [];
 
         atcs.forEach(a => {
-            if (a.type === 6) { 
-                centers.push(a); // CTR (Hava Sahaları)
-            } else {
+            if (a.type === 6) { centers.push(a); } 
+            else {
                 let apt = a.airportName || "Unknown";
                 if (!airports[apt]) airports[apt] = [];
-                airports[apt].push(a); // Yerel Havalimanları
+                airports[apt].push(a);
             }
         });
 
         let html = "";
 
-        // 1. CENTER'LARI (FIR) ÜSTTE LİSTELE
+        // CENTER (FIR) LİSTESİ
         if (centers.length > 0) {
             html += `<div class="atc-group-title">📡 En-Route Centers (FIR)</div>`;
             centers.sort((a,b) => (a.airportName||"").localeCompare(b.airportName||"")).forEach(c => {
-                html += `<div class="atc-item">
-                            <span style="font-weight:bold; font-size:14px;">${c.airportName || "CENTER"}</span>
-                            <div style="display:flex; gap:10px; align-items:center;">
-                                <span class="atc-type t-6">CTR</span>
-                                <span class="atc-user">${c.username}</span>
-                            </div>
-                         </div>`;
+                html += `<div class="atc-item"><span style="font-weight:bold; font-size:14px;">${c.airportName || "CENTER"}</span><div style="display:flex; gap:10px; align-items:center;"><span class="atc-type t-6">CTR</span><span class="atc-user">${c.username}</span></div></div>`;
             });
         }
 
-        // 2. HAVALİMANLARINI KENDİ İÇİNDE GRUPLA VE LİSTELE
+        // HAVALİMANLARI VE AÇILIR MENÜ (ACCORDION)
         const aptKeys = Object.keys(airports).sort();
         if (aptKeys.length > 0) {
             html += `<div class="atc-group-title" style="margin-top:20px;">🏢 Local Airports</div>`;
             aptKeys.forEach(apt => {
-                html += `<div class="atc-airport-card">`;
-                html += `<div class="atc-airport-header"><span>${apt}</span> <span style="font-size:11px; color:gray; font-weight:normal;">${airports[apt].length} Freq</span></div>`;
-                html += `<div class="atc-facilities">`;
+                const sId = airports[apt][0].sessionId;
+                const safeId = apt.replace(/[^a-zA-Z0-9]/g, '-');
                 
+                html += `<div class="atc-airport-card">`;
+                // Accordion Başlığı
+                html += `<div class="atc-airport-header" onclick="toggleAtcAccordion('${safeId}')" style="cursor:pointer; transition:0.2s;">
+                            <span>${apt}</span> 
+                            <span style="font-size:11px; color:gray; font-weight:normal;">${airports[apt].length} Freq ▾</span>
+                         </div>`;
+                
+                // Accordion İçeriği (Başlangıçta Gizli)
+                html += `<div id="atc-acc-${safeId}" class="atc-accordion-content" style="display:none;">`;
+                
+                // ATIS ve METAR Butonu
+                html += `<div class="atc-weather-box">
+                            <button class="fetch-wx-btn" onclick="fetchWxData('${apt}', '${sId}', '${safeId}')">📡 Load ATIS & METAR Weather</button>
+                            <div id="wx-data-${safeId}" style="display:none; margin-top:8px;"></div>
+                         </div>`;
+                
+                // Frekanslar
+                html += `<div class="atc-facilities">`;
                 airports[apt].sort((a,b) => typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)).forEach(f => {
                     html += `<div class="atc-fac-row">
                                 <span class="atc-type t-${f.type}">${typesMap[f.type] || "ATC"}</span>
                                 <span class="atc-user">${f.username}</span>
                              </div>`;
                 });
-                html += `</div></div>`;
+                html += `</div></div></div>`;
             });
         }
-
         return html;
     };
 
@@ -172,6 +180,45 @@ function renderAtcTables(searchTerm) {
     
     const trnContainer = document.getElementById("atc-training-list");
     if(trnContainer) trnContainer.innerHTML = buildHtml("training");
+}
+
+// AÇILIR MENÜ KONTROLÜ
+function toggleAtcAccordion(safeId) {
+    const acc = document.getElementById(`atc-acc-${safeId}`);
+    acc.style.display = (acc.style.display === "none") ? "block" : "none";
+}
+
+// METAR VE ATIS ÇEKİCİ (Tembel Yükleme)
+async function fetchWxData(icao, sessionId, safeId) {
+    const container = document.getElementById(`wx-data-${safeId}`);
+    container.style.display = "block";
+    container.innerHTML = `<span style="color:gray; font-size:11px;">Fetching aviation data...</span>`;
+
+    let metarOutput = "METAR data currently unavailable.";
+    let atisOutput = "No active ATIS for this airport.";
+
+    try {
+        // 1. NOAA'dan Gerçek Dünya METAR Verisini Çek
+        const metarRes = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icao}&format=json`);
+        const metarData = await metarRes.json();
+        if (metarData && metarData.length > 0 && metarData[0].rawOb) {
+            metarOutput = metarData[0].rawOb;
+        }
+
+        // 2. Vercel Backend'den Infinite Flight ATIS Verisini Çek
+        const atisRes = await fetch(`${API_URL}?action=atis&sessionId=${sessionId}&airportIcao=${icao}`);
+        const atisData = await atisRes.json();
+        if (atisData.errorCode === 0 && atisData.result) {
+            atisOutput = atisData.result;
+        }
+    } catch (e) {
+        console.error("Weather Fetch Error:", e);
+    }
+
+    container.innerHTML = `
+        <div class="metar-display"><strong>METAR:</strong><br>${metarOutput}</div>
+        <div class="atis-display"><strong>ATIS:</strong><br>${atisOutput}</div>
+    `;
 }
 
 function renderLeaderboard(searchTerm) {
