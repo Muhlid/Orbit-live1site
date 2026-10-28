@@ -196,7 +196,8 @@
             <button class="glass-submit-btn" onclick="saveProfileSettings()">Save Profile</button>
         </div>
 
-        <div id="profile-view" class="hidden">
+        <!-- PROFİL VE UÇUŞ GEÇMİŞİ (LOGBOOK) PANELİ -->
+    <div id="profile-view" class="hidden">
         <h2 id="prof-name" style="color:var(--neon-cyan); margin-bottom:5px;">Username</h2>
         <div id="prof-va" style="color:var(--neon-pink); font-size:12px; font-weight:bold; margin-bottom:20px;">VA / VO</div>
         
@@ -209,23 +210,15 @@
             <div><strong style="color:#fff;">ATC:</strong> <span id="prof-atc">-</span></div>
         </div>
 
-        <!-- YENİ: LOGBOOK (UÇUŞ GEÇMİŞİ) ALANI -->
         <h3 style="color:var(--neon-cyan); border-bottom:1px solid rgba(0,245,212,0.3); padding-bottom:5px; margin-bottom:15px; font-size:16px;">📚 Flight Logbook</h3>
-        <div id="prof-logbook" style="max-height:200px; overflow-y:auto; margin-bottom:20px; font-size:13px;">
+        
+        <!-- GEÇMİŞ UÇUŞLAR BURAYA GELECEK -->
+        <div id="prof-logbook" style="max-height:250px; overflow-y:auto; margin-bottom:20px; font-size:13px; padding-right:5px;">
             <div style="color:gray; text-align:center;">Loading career data...</div>
         </div>
 
         <button class="glass-submit-btn" onclick="logoutProfile()" style="width:100%; border-color:#FF3366; color:#FF3366;">Log Out</button>
     </div>
-            
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">GRADE</div><div id="prof-grade" style="font-size:24px; font-weight:bold; color:gold;">-</div></div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">TIME</div><div id="prof-time" style="font-size:24px; font-weight:bold;">-</div></div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">LANDINGS</div><div id="prof-landings" style="font-size:24px; font-weight:bold;">-</div></div>
-                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">ATC OPS</div><div id="prof-atc" style="font-size:24px; font-weight:bold; color:var(--neon-pink);">-</div></div>
-            </div>
-            <button class="glass-submit-btn" style="background:transparent; border:1px solid #FF007F; color:#FF007F; margin-top:20px;" onclick="logoutProfile()">Logout</button>
-        </div>
     </div>
     <div id="panel-overlay" class="panel-overlay" onclick="closeSidePanels()"></div>
 
