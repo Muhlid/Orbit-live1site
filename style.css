@@ -195,3 +195,10 @@ body, html { margin: 0; padding: 0; min-height: 100vh; background-color: var(--b
 .t-1 { color: #FF1744; } /* TWR */
 .t-4, .t-5 { color: #00E676; } /* APP & DEP */
 .t-6 { color: #D500F9; border: 1px solid #D500F9; } /* CENTER */
+/* ATC ACCORDION VE HAVA DURUMU (METAR/ATIS) */
+.atc-accordion-content { background: rgba(0,0,0,0.5); padding: 10px; border-top: 1px dashed rgba(255,255,255,0.1); }
+.atc-weather-box { margin-bottom: 10px; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); }
+.metar-display { font-family: monospace; font-size: 12px; color: #00FF00; background: rgba(0,255,0,0.05); padding: 8px; border-left: 3px solid #00FF00; border-radius: 4px; margin-top: 5px; line-height: 1.4; }
+.atis-display { font-size: 12px; color: var(--neon-cyan); background: rgba(0,255,255,0.05); padding: 8px; border-left: 3px solid var(--neon-cyan); border-radius: 4px; margin-top: 5px; line-height: 1.4; }
+.fetch-wx-btn { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: 0.2s; font-weight: bold; }
+.fetch-wx-btn:hover { background: var(--neon-cyan); color: #000; }
