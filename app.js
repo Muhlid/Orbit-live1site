@@ -9,14 +9,49 @@ async function fetchFlightData() {
         const res = await fetch(API_URL);
         if (!res.ok) return;
         const data = await res.json();
+        
         if (data.result) flightsData = data.result;
         if (data.atc) atcData = data.atc;
-        updateAtcBadges(); updateTrendingWidget(); renderActiveTab();
+        
+        // EKRANI ANINDA (0.1 Saniyede) YÜKLE
+        updateAtcBadges(); 
+        updateTrendingWidget(); 
+        renderActiveTab();
+
+        // SAYFA YÜKLENDİKTEN SONRA TRENDLERİ ARKA PLANDA YAVAŞÇA DOLDUR
+        fillTrendsInBackground();
+
     } catch(e) { console.error("Fetch Error:", e); }
 }
 
-fetchFlightData();
-setInterval(fetchFlightData, 15000); 
+async function fillTrendsInBackground() {
+    // "Loading" durumundaki uçakları bul (Her seferinde en fazla 15 tanesini işle)
+    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
+    if (missingRoutes.length === 0) return; // Hepsi yüklendiyse işlemi bitir
+
+    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
+    
+    try {
+        const res = await fetch(`${API_URL}?action=batch_routes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const updates = await res.json();
+        
+        // Gelen yeni kalkış/varış noktalarını ana veriye ekle
+        updates.forEach(u => {
+            const flt = flightsData.find(f => f.flightId === u.flightId);
+            if (flt) {
+                flt.originAirport = u.origin;
+                flt.destinationAirport = u.dest;
+            }
+        });
+        
+        // Sadece trendler widget'ını sessizce yenile (Tablo etkilenmez)
+        updateTrendingWidget(); 
+    } catch (e) { console.error("Trend update failed", e); }
+}
 
 function updateAtcBadges() {
     const exp = atcData.filter(a => (a.serverName || "").toLowerCase().includes("expert")).length;
