@@ -94,10 +94,61 @@ function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     event.currentTarget.classList.add('active');
+    
     if (tabId === 'atc') document.getElementById('tab-atc').classList.add('active');
     else if (tabId === 'leaderboard') document.getElementById('tab-leaderboard').classList.add('active');
+    else if (tabId === 'planner') document.getElementById('tab-planner').classList.add('active');
     else document.getElementById('tab-flights').classList.add('active'); 
-    renderActiveTab();
+    
+    if(tabId !== 'planner') renderActiveTab();
+}
+
+// ---------------- YENİ: AI PLANNER ALGORİTMASI ----------------
+async function generateFlightBriefing() {
+    const resultsDiv = document.getElementById("planner-results");
+    resultsDiv.innerHTML = "<div style='text-align:center; padding:20px; color:var(--neon-cyan);'>📡 Analyzing ATC frequencies and satellite weather data...</div>";
+
+    // 1. O Anki Aktif ATC'ye Sahip Havalimanlarını Bul
+    let activeAirports = [...new Set(atcData.filter(a => a.type !== 6 && a.airportName && a.airportName.length === 4).map(a => a.airportName))];
+
+    if (activeAirports.length < 2) {
+        resultsDiv.innerHTML = "<div style='color:#FF3366; text-align:center;'>Not enough active ATCs right now to generate a fully staffed route.</div>";
+        return;
+    }
+
+    // 2. Rastgele İki Aktif Havalimanı Seç (Kalkış ve İniş)
+    activeAirports.sort(() => 0.5 - Math.random());
+    let dep = activeAirports[0];
+    let arr = activeAirports[1];
+
+    // 3. NOAA Açık Kaynak Havacılık Sisteminden Gerçek METAR Çek
+    let depMetar = "Fetching real-time weather...", arrMetar = "Fetching real-time weather...";
+    try {
+        const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=${dep},${arr}&format=json`);
+        const data = await res.json();
+        data.forEach(m => {
+            if (m.icaoId === dep) depMetar = m.rawOb;
+            if (m.icaoId === arr) arrMetar = m.rawOb;
+        });
+    } catch (e) { console.error("Weather API Error", e); }
+
+    // 4. Sonuçları Şık Bir Brifing Kartıyla Ekrana Bas
+    resultsDiv.innerHTML = `
+        <div style="background:rgba(255,255,255,0.05); padding:20px; border-left:4px solid var(--neon-cyan); border-radius:8px;">
+            <h3 style="margin-top:0; color:var(--neon-pink); font-size:22px;">🔥 Recommended Flight: ${dep} ✈️ ${arr}</h3>
+            <p style="color:#ccc; font-size:13px;">Both airports currently have active ATC controllers on duty. Ideal for a realistic flight experience.</p>
+            
+            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:15px; border:1px solid rgba(0,255,0,0.2);">
+                <strong style="color:#00FF00;">🛫 Departure Weather (${dep}):</strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${depMetar}</div>
+            </div>
+            
+            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:10px; border:1px solid rgba(0,245,212,0.2);">
+                <strong style="color:var(--neon-cyan);">🛬 Arrival Weather (${arr}):</strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${arrMetar}</div>
+            </div>
+        </div>
+    `;
 }
 
 function setSort(col) { if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; } renderActiveTab(); }
