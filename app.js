@@ -556,7 +556,6 @@ async function fetchProfileStats(username) {
     logContainer.innerHTML = "<div style='color:gray; text-align:center;'>Loading flight logs...</div>";
 
     try {
-        // 1. Canlı IF İstatistiklerini Çek (Grade, Uçuş Saati vb.)
         const resStats = await fetch(`${API_URL}?action=stats&username=${username}`);
         const dataStats = await resStats.json();
         if (dataStats.result && dataStats.result.length > 0) {
@@ -566,31 +565,28 @@ async function fetchProfileStats(username) {
             document.getElementById("prof-time").innerText = `${Math.round((stats.flightTime || 0) / 60)} hrs`;
             document.getElementById("prof-landings").innerText = stats.landingCount || 0;
             document.getElementById("prof-atc").innerText = stats.atcOperations || 0;
-        } else { 
-            document.getElementById("prof-va").innerText = "User not found on Live API."; 
-        }
+        } else { document.getElementById("prof-va").innerText = "User not found on Live API."; }
 
-        // 2. Supabase Kariyer (Logbook) Verilerini Çek
+        // SUPABASE'DEN GEÇMİŞ UÇUŞLARI LİSTELE
         const resCareer = await fetch(`${API_URL}?action=career&username=${username}`);
         const dataCareer = await resCareer.json();
         
         if (dataCareer.result && dataCareer.result.length > 0) {
             logContainer.innerHTML = dataCareer.result.map(log => `
                 <div style="background:rgba(255,255,255,0.05); padding:10px; margin-bottom:8px; border-left:3px solid var(--neon-cyan); border-radius:4px;">
-                    <div style="font-weight:bold; color:var(--neon-cyan); margin-bottom:4px;">${log.origin} ✈️ ${log.destination}</div>
+                    <div style="font-weight:bold; color:var(--neon-cyan); margin-bottom:4px; font-size:14px;">${log.origin} ✈️ ${log.destination}</div>
                     <div style="color:#aaa; display:flex; justify-content:space-between;">
                         <span>${log.aircraft}</span>
-                        <span style="color:var(--neon-pink);">${log.callsign}</span>
+                        <span style="color:var(--neon-pink); font-weight:bold;">${log.callsign}</span>
                     </div>
-                    <div style="color:gray; font-size:10px; margin-top:4px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px;">
+                    <div style="color:gray; font-size:10px; margin-top:6px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:4px;">
                         ${new Date(log.created_at).toLocaleDateString()} - OrbitLive Auto-PIREP
                     </div>
                 </div>
             `).join("");
         } else {
-            logContainer.innerHTML = "<div style='color:gray; text-align:center;'>No flights logged yet. Your flights will be saved automatically upon landing.</div>";
+            logContainer.innerHTML = "<div style='color:gray; text-align:center;'>No flights logged yet. Complete a flight to see it here!</div>";
         }
-
     } catch(e) { 
         document.getElementById("prof-va").innerText = "Error fetching stats."; 
         logContainer.innerHTML = "<div style='color:#FF3366; text-align:center;'>Database connection error.</div>";
