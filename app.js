@@ -61,6 +61,116 @@ function updateAtcBadges() {
     document.getElementById("badge-training").innerText = `${trn} ATC`;
 }
 
+function switchTab(tabId) {
+    activeTab = tabId;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    if (tabId === 'atc') document.getElementById('tab-atc').classList.add('active');
+    else if (tabId === 'leaderboard') document.getElementById('tab-leaderboard').classList.add('active');
+    else if (tabId === 'planner') document.getElementById('tab-planner').classList.add('active');
+    else document.getElementById('tab-flights').classList.add('active'); 
+    
+    if(tabId !== 'planner') renderActiveTab();
+}
+
+// ---------------- YENİ: AI PLANNER ALGORİTMASI ----------------
+// --- 1. CORS KORUMALI VE İKONLU AI ALGORİTMASI ---
+async function generateFlightBriefing() {
+    const resultsDiv = document.getElementById("planner-results");
+    resultsDiv.innerHTML = `<div style='text-align:center; padding:20px; color:var(--neon-cyan); display:flex; justify-content:center; align-items:center; gap:8px;'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Analyzing ATC frequencies and satellite weather data...</div>`;
+
+    let activeAirports = [...new Set(atcData.filter(a => a.type !== 6 && a.airportName && a.airportName.length === 4).map(a => a.airportName))];
+    if (activeAirports.length < 2) {
+        resultsDiv.innerHTML = "<div style='color:#FF3366; text-align:center;'>Not enough active ATCs right now to generate a fully staffed route.</div>";
+        return;
+    }
+
+    activeAirports.sort(() => 0.5 - Math.random());
+    let dep = activeAirports[0]; let arr = activeAirports[1];
+
+    let depMetar = "Fetching real-time weather...", arrMetar = "Fetching real-time weather...";
+    try {
+        // YENİ: NOAA'yı kendi güvenli Vercel sunucumuz üzerinden çekiyoruz
+        const res = await fetch(`${API_URL}?action=metar&icao=${dep},${arr}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+            data.forEach(m => {
+                if (m.icaoId === dep) depMetar = m.rawOb;
+                if (m.icaoId === arr) arrMetar = m.rawOb;
+            });
+        }
+    } catch (e) { console.error("Weather API Error", e); }
+
+    resultsDiv.innerHTML = `
+        <div style="background:rgba(255,255,255,0.05); padding:20px; border-left:4px solid var(--neon-cyan); border-radius:8px;">
+            <h3 style="margin-top:0; color:var(--neon-pink); font-size:22px; display:flex; align-items:center; gap:8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                Recommended Route: ${dep} - ${arr}
+            </h3>
+            <p style="color:#ccc; font-size:13px;">Both airports currently have active ATC controllers on duty.</p>
+            
+            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:15px; border:1px solid rgba(0,255,0,0.2);">
+                <strong style="color:#00FF00; display:flex; align-items:center; gap:5px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13.5l-9.1-4.6L9 2 7.3 2.8l3.2 6.4-5 1-2.4-2L1 9.5l3.2 5.5.3 1H22v-2.5z"/></svg> Departure Weather (${dep}):
+                </strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${depMetar}</div>
+            </div>
+            
+            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:10px; border:1px solid rgba(0,245,212,0.2);">
+                <strong style="color:var(--neon-cyan); display:flex; align-items:center; gap:5px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.5l-9.1-4.6L9 5 7.3 5.8l3.2 6.4-5 1-2.4-2L1 12.5l3.2 5.5.3 1H22v-2.5z" transform="matrix(1 0 0 -1 0 24)"/></svg> Arrival Weather (${arr}):
+                </strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${arrMetar}</div>
+            </div>
+        </div>
+    `;
+}
+
+// --- 2. CORS KORUMALI VE İKONLU ATIS/METAR BUTONU ---
+async function loadAtisMetar(sessionId, icao) {
+    const btn = document.getElementById(`btn-atis-${icao}`);
+    const infoBox = document.getElementById(`info-${icao}`);
+    btn.innerText = "Fetching Data...";
+    infoBox.style.display = "block";
+    infoBox.innerHTML = "Connecting...";
+
+    try {
+        const atisRes = await fetch(`${API_URL}?action=atis&sessionId=${sessionId}&icao=${icao}`);
+        const atisData = await atisRes.json();
+        let atisText = (atisData.errorCode === 0 && atisData.result) ? atisData.result : "No Active ATIS on this server.";
+
+        let metarText = "Real METAR data unavailable.";
+        try {
+            // YENİ: NOAA'yı kendi güvenli Vercel sunucumuz üzerinden çekiyoruz
+            const metarRes = await fetch(`${API_URL}?action=metar&icao=${icao}`);
+            const metarData = await metarRes.json();
+            if(metarData && metarData.length > 0 && metarData[0].rawOb) {
+                metarText = metarData[0].rawOb;
+            }
+        } catch(e) { console.error("METAR failed:", e); }
+
+        infoBox.innerHTML = `
+            <div style="margin-bottom:8px;">
+                <strong style="color:var(--neon-cyan); display:flex; align-items:center; gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M12 12v9"/></svg> IF ATIS:
+                </strong><br>${atisText}
+            </div>
+            <div style="border-top:1px dashed rgba(255,255,255,0.2); padding-top:8px;">
+                <strong style="color:#00FF00; display:flex; align-items:center; gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19C19.985 19 22 16.985 22 14.5 22 12.164 20.22 10.246 17.935 10.029 17.158 6.549 14.07 4 10.5 4 6.358 4 3 7.358 3 11.5 3 11.758 3.013 12.012 3.039 12.26 1.34 13.064 0 14.86 0 17 0 19.761 2.239 22 5 22H17.5z"/></svg> REAL METAR:
+                </strong><br>${metarText}
+            </div>
+        `;
+        btn.style.display = "none"; 
+    } catch(e) {
+        infoBox.innerHTML = "Error loading aviation data.";
+        btn.innerText = "Try Again";
+    }
+}
+
 function updateTrendingWidget() {
     const srvFilter = document.getElementById("trendServer").value;
     const acCounts = {};
@@ -87,68 +197,6 @@ function updateTrendingWidget() {
     document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
     document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Departing</span></li>`).join("") || "<li>Loading...</li>";
     document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arriving</span></li>`).join("") || "<li>Loading...</li>";
-}
-
-function switchTab(tabId) {
-    activeTab = tabId;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    
-    if (tabId === 'atc') document.getElementById('tab-atc').classList.add('active');
-    else if (tabId === 'leaderboard') document.getElementById('tab-leaderboard').classList.add('active');
-    else if (tabId === 'planner') document.getElementById('tab-planner').classList.add('active');
-    else document.getElementById('tab-flights').classList.add('active'); 
-    
-    if(tabId !== 'planner') renderActiveTab();
-}
-
-// ---------------- YENİ: AI PLANNER ALGORİTMASI ----------------
-async function generateFlightBriefing() {
-    const resultsDiv = document.getElementById("planner-results");
-    resultsDiv.innerHTML = "<div style='text-align:center; padding:20px; color:var(--neon-cyan);'>📡 Analyzing ATC frequencies and satellite weather data...</div>";
-
-    // 1. O Anki Aktif ATC'ye Sahip Havalimanlarını Bul
-    let activeAirports = [...new Set(atcData.filter(a => a.type !== 6 && a.airportName && a.airportName.length === 4).map(a => a.airportName))];
-
-    if (activeAirports.length < 2) {
-        resultsDiv.innerHTML = "<div style='color:#FF3366; text-align:center;'>Not enough active ATCs right now to generate a fully staffed route.</div>";
-        return;
-    }
-
-    // 2. Rastgele İki Aktif Havalimanı Seç (Kalkış ve İniş)
-    activeAirports.sort(() => 0.5 - Math.random());
-    let dep = activeAirports[0];
-    let arr = activeAirports[1];
-
-    // 3. NOAA Açık Kaynak Havacılık Sisteminden Gerçek METAR Çek
-    let depMetar = "Fetching real-time weather...", arrMetar = "Fetching real-time weather...";
-    try {
-        const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=${dep},${arr}&format=json`);
-        const data = await res.json();
-        data.forEach(m => {
-            if (m.icaoId === dep) depMetar = m.rawOb;
-            if (m.icaoId === arr) arrMetar = m.rawOb;
-        });
-    } catch (e) { console.error("Weather API Error", e); }
-
-    // 4. Sonuçları Şık Bir Brifing Kartıyla Ekrana Bas
-    resultsDiv.innerHTML = `
-        <div style="background:rgba(255,255,255,0.05); padding:20px; border-left:4px solid var(--neon-cyan); border-radius:8px;">
-            <h3 style="margin-top:0; color:var(--neon-pink); font-size:22px;">🔥 Recommended Flight: ${dep} ✈️ ${arr}</h3>
-            <p style="color:#ccc; font-size:13px;">Both airports currently have active ATC controllers on duty. Ideal for a realistic flight experience.</p>
-            
-            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:15px; border:1px solid rgba(0,255,0,0.2);">
-                <strong style="color:#00FF00;">🛫 Departure Weather (${dep}):</strong>
-                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${depMetar}</div>
-            </div>
-            
-            <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:10px; border:1px solid rgba(0,245,212,0.2);">
-                <strong style="color:var(--neon-cyan);">🛬 Arrival Weather (${arr}):</strong>
-                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${arrMetar}</div>
-            </div>
-        </div>
-    `;
 }
 
 function setSort(col) { if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; } renderActiveTab(); }
