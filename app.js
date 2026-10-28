@@ -105,24 +105,73 @@ function renderFlightsTable(serverFilter, searchTerm) {
 
 function renderAtcTables(searchTerm) {
     const typesMap = { 0:"GND", 1:"TWR", 2:"UNICOM", 3:"CLR", 4:"APP", 5:"DEP", 6:"CTR", 7:"ATIS" };
-    const filterAtc = (srv) => atcData.filter(a => (a.serverName || "").toLowerCase().includes(srv) && 
-        ((a.airportName || "").toLowerCase().includes(searchTerm) || (a.username || "").toLowerCase().includes(searchTerm))
-    ).sort((a, b) => (a.airportName || "").localeCompare(b.airportName || ""));
+    // Mantıksal sıralama: ATIS(7) -> CLR(3) -> GND(0) -> TWR(1) -> DEP(5) -> APP(4)
+    const typeOrder = [7, 3, 0, 1, 5, 4]; 
 
-    const renderTable = (data, tbodyId) => {
-        const tbody = document.getElementById(tbodyId);
-        if(!tbody) return;
-        if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:gray;">No ATC online</td></tr>`; return; }
-        const fragment = document.createDocumentFragment();
-        data.forEach(a => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="font-weight:bold;">${a.airportName || "CENTER"}</td><td style="color:var(--neon-pink); font-size:12px;">${typesMap[a.type] || "ATC"}</td><td>${a.username || "Controller"}</td>`;
-            fragment.appendChild(tr);
+    const buildHtml = (srv) => {
+        let atcs = atcData.filter(a => 
+            (a.serverName || "").toLowerCase().includes(srv) && 
+            ((a.airportName || "").toLowerCase().includes(searchTerm) || (a.username || "").toLowerCase().includes(searchTerm))
+        );
+
+        if (atcs.length === 0) return `<div style="text-align:center; padding:20px; color:gray;">No ATC online</div>`;
+
+        let airports = {};
+        let centers = [];
+
+        atcs.forEach(a => {
+            if (a.type === 6) { 
+                centers.push(a); // CTR (Hava Sahaları)
+            } else {
+                let apt = a.airportName || "Unknown";
+                if (!airports[apt]) airports[apt] = [];
+                airports[apt].push(a); // Yerel Havalimanları
+            }
         });
-        tbody.innerHTML = ""; tbody.appendChild(fragment);
+
+        let html = "";
+
+        // 1. CENTER'LARI (FIR) ÜSTTE LİSTELE
+        if (centers.length > 0) {
+            html += `<div class="atc-group-title">📡 En-Route Centers (FIR)</div>`;
+            centers.sort((a,b) => (a.airportName||"").localeCompare(b.airportName||"")).forEach(c => {
+                html += `<div class="atc-item">
+                            <span style="font-weight:bold; font-size:14px;">${c.airportName || "CENTER"}</span>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <span class="atc-type t-6">CTR</span>
+                                <span class="atc-user">${c.username}</span>
+                            </div>
+                         </div>`;
+            });
+        }
+
+        // 2. HAVALİMANLARINI KENDİ İÇİNDE GRUPLA VE LİSTELE
+        const aptKeys = Object.keys(airports).sort();
+        if (aptKeys.length > 0) {
+            html += `<div class="atc-group-title" style="margin-top:20px;">🏢 Local Airports</div>`;
+            aptKeys.forEach(apt => {
+                html += `<div class="atc-airport-card">`;
+                html += `<div class="atc-airport-header"><span>${apt}</span> <span style="font-size:11px; color:gray; font-weight:normal;">${airports[apt].length} Freq</span></div>`;
+                html += `<div class="atc-facilities">`;
+                
+                airports[apt].sort((a,b) => typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)).forEach(f => {
+                    html += `<div class="atc-fac-row">
+                                <span class="atc-type t-${f.type}">${typesMap[f.type] || "ATC"}</span>
+                                <span class="atc-user">${f.username}</span>
+                             </div>`;
+                });
+                html += `</div></div>`;
+            });
+        }
+
+        return html;
     };
-    renderTable(filterAtc("expert"), "atc-expert-tbody");
-    renderTable(filterAtc("training"), "atc-training-tbody");
+
+    const expContainer = document.getElementById("atc-expert-list");
+    if(expContainer) expContainer.innerHTML = buildHtml("expert");
+    
+    const trnContainer = document.getElementById("atc-training-list");
+    if(trnContainer) trnContainer.innerHTML = buildHtml("training");
 }
 
 function renderLeaderboard(searchTerm) {
