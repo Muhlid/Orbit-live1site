@@ -196,12 +196,27 @@
             <button class="glass-submit-btn" onclick="saveProfileSettings()">Save Profile</button>
         </div>
 
-        <div id="profile-view" class="hidden" style="margin-top:20px;">
-            <div style="text-align:center; margin-bottom:20px;">
-                <div style="width:80px; height:80px; background:rgba(255,255,255,0.1); border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:30px;">✈️</div>
-                <h2 id="prof-name" style="margin:0; color:var(--neon-cyan);">---</h2>
-                <div id="prof-va" style="font-size:12px; color:gray;">---</div>
-            </div>
+        <div id="profile-view" class="hidden">
+        <h2 id="prof-name" style="color:var(--neon-cyan); margin-bottom:5px;">Username</h2>
+        <div id="prof-va" style="color:var(--neon-pink); font-size:12px; font-weight:bold; margin-bottom:20px;">VA / VO</div>
+        
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:12px; color:gray;">
+            <div><strong style="color:#fff;">Grade:</strong> <span id="prof-grade">-</span></div>
+            <div><strong style="color:#fff;">Time:</strong> <span id="prof-time">-</span></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:25px; font-size:12px; color:gray;">
+            <div><strong style="color:#fff;">Landings:</strong> <span id="prof-landings">-</span></div>
+            <div><strong style="color:#fff;">ATC:</strong> <span id="prof-atc">-</span></div>
+        </div>
+
+        <!-- YENİ: LOGBOOK (UÇUŞ GEÇMİŞİ) ALANI -->
+        <h3 style="color:var(--neon-cyan); border-bottom:1px solid rgba(0,245,212,0.3); padding-bottom:5px; margin-bottom:15px; font-size:16px;">📚 Flight Logbook</h3>
+        <div id="prof-logbook" style="max-height:200px; overflow-y:auto; margin-bottom:20px; font-size:13px;">
+            <div style="color:gray; text-align:center;">Loading career data...</div>
+        </div>
+
+        <button class="glass-submit-btn" onclick="logoutProfile()" style="width:100%; border-color:#FF3366; color:#FF3366;">Log Out</button>
+    </div>
             
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:10px; text-align:center;"><div style="font-size:11px; color:gray;">GRADE</div><div id="prof-grade" style="font-size:24px; font-weight:bold; color:gold;">-</div></div>
