@@ -13,12 +13,13 @@ async function fetchFlightData() {
         if (data.result) flightsData = data.result;
         if (data.atc) atcData = data.atc;
         
-        // EKRANI ANINDA YÜKLE
         updateAtcBadges(); 
         updateTrendingWidget(); 
         renderActiveTab();
+        
+        // YENİ: UÇAK YERE İNDİ Mİ DİYE KONTROL ET
+        if (flightsData.length > 0) checkAutoPirep(flightsData);
 
-        // EKRAN YÜKLENDİKTEN SONRA TRENDLERİ ARKA PLANDA ÇEK (SİTE DONMAZ)
         fillTrendsInBackground();
 
     } catch(e) { console.error("Fetch Error:", e); }
