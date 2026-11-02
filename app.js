@@ -5,6 +5,7 @@ let activeTab = "expert"; let sortCol = "callsign"; let sortAsc = true;
 let currentSelectedFlight = null; let searchTimeout = null;
 let leafletMap = null; 
 
+// ANA VERİ ÇEKİCİ
 async function fetchFlightData() {
     try {
         const res = await fetch(API_URL);
@@ -16,32 +17,46 @@ async function fetchFlightData() {
         
         updateAtcBadges(); 
         
-        // KALKIŞ VE VARIŞI DOĞRUDAN UÇUŞ VERİSİNDEN BULMA (EKSİKSE N/A)
-        flightsData.forEach(flight => {
-             // API'den rota (waypoint) geliyorsa
-             if (flight.flightPlan && flight.flightPlan.waypoints && flight.flightPlan.waypoints.length > 0) {
-                 const waypoints = flight.flightPlan.waypoints;
-                 flight.originAirport = waypoints[0].name || "N/A";
-                 flight.destinationAirport = waypoints[waypoints.length - 1].name || "N/A";
-             } 
-             // Zaten önbellekten origin/destination geliyorsa
-             else if (flight.origin && flight.destination) {
-                 flight.originAirport = flight.origin;
-                 flight.destinationAirport = flight.destination;
-             }
-             // Hiçbiri yoksa N/A atıyoruz ki Loading'de takılıp kalmasın
-             else {
-                 flight.originAirport = "N/A";
-                 flight.destinationAirport = "N/A";
-             }
+        // API ana listede rota vermez! Arka plan tarayıcısı bulana kadar Loading atıyoruz.
+        flightsData.forEach(f => {
+            if (!f.originAirport) f.originAirport = "Loading";
+            if (!f.destinationAirport) f.destinationAirport = "Loading";
         });
 
         updateTrendingWidget(); 
         renderActiveTab();
         
-        if (flightsData.length > 0) checkAutoPirep(flightsData);
-
+        if (flightsData.length > 0) {
+            checkAutoPirep(flightsData);
+            fillTrendsInBackground(); // EKSİK ROTALARI BU BULACAK
+        }
     } catch(e) { console.error("Fetch Error:", e); }
+}
+
+// ARKA PLAN ROTA TARAYICISI (Trendleri Doldurur)
+async function fillTrendsInBackground() {
+    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
+    if (missingRoutes.length === 0) return; 
+    
+    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
+    
+    try {
+        const res = await fetch(`${API_URL}?action=batch_routes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const updates = await res.json();
+        
+        updates.forEach(u => {
+            const flt = flightsData.find(f => f.flightId === u.flightId);
+            if (flt) {
+                flt.originAirport = u.origin || "N/A";
+                flt.destinationAirport = u.dest || "N/A";
+            }
+        });
+        updateTrendingWidget(); 
+    } catch (e) { console.error("Trend update failed", e); }
 }
 
 fetchFlightData();
@@ -337,10 +352,12 @@ function openPilotCard(f) {
     document.getElementById("live-stats-container").classList.add("hidden");
     const btnStats = document.getElementById("btn-load-stats");
     btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
-    
+
+        // KART AÇILIŞI VE HARİTA BUTONU KONTROLÜ
     const btnMap = document.getElementById("btn-show-map");
     if (btnMap) {
-        if (f.latitude === undefined || f.longitude === undefined || f.latitude === null || f.longitude === null) {
+        // Enlem veya Boylam tanımsızsa (undefined/null) butonu gizle, değilse göster
+        if (f.latitude == null || f.longitude == null) {
             btnMap.style.display = "none";
         } else {
             btnMap.style.display = "block";
