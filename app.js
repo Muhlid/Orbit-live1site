@@ -3,6 +3,8 @@ const API_URL = "https://orbtlive.vercel.app/api/flights";
 let flightsData = []; let atcData = [];
 let activeTab = "expert"; let sortCol = "callsign"; let sortAsc = true;
 let currentSelectedFlight = null; let searchTimeout = null;
+let leafletMap = null; // Harita nesnesi
+let routePolyline = null; // Rota çizgisi
 
 async function fetchFlightData() {
     try {
@@ -14,42 +16,22 @@ async function fetchFlightData() {
         if (data.atc) atcData = data.atc;
         
         updateAtcBadges(); 
+        
+        // Kalkış/Varış verilerini uçuş planından çek
+        flightsData.forEach(flight => {
+             if (flight.flightPlan && flight.flightPlan.waypoints && flight.flightPlan.waypoints.length > 0) {
+                 const waypoints = flight.flightPlan.waypoints;
+                 flight.originAirport = waypoints[0].name || "N/A";
+                 flight.destinationAirport = waypoints[waypoints.length - 1].name || "N/A";
+             }
+        });
+
         updateTrendingWidget(); 
         renderActiveTab();
         
-        // YENİ: UÇAK YERE İNDİ Mİ DİYE KONTROL ET
         if (flightsData.length > 0) checkAutoPirep(flightsData);
 
-        fillTrendsInBackground();
-
     } catch(e) { console.error("Fetch Error:", e); }
-}
-
-async function fillTrendsInBackground() {
-    // Sadece henüz rotası çekilmemiş 15 uçağı bulur
-    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
-    if (missingRoutes.length === 0) return; // Eksik yoksa işlemi bitir
-    
-    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
-    
-    try {
-        const res = await fetch(`${API_URL}?action=batch_routes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const updates = await res.json();
-        
-        // Gelen verileri listeye ekle ve trendleri yenile
-        updates.forEach(u => {
-            const flt = flightsData.find(f => f.flightId === u.flightId);
-            if (flt) {
-                flt.originAirport = u.origin;
-                flt.destinationAirport = u.dest;
-            }
-        });
-        updateTrendingWidget(); 
-    } catch (e) { console.error("Trend update failed", e); }
 }
 
 fetchFlightData();
@@ -76,8 +58,6 @@ function switchTab(tabId) {
     if(tabId !== 'planner') renderActiveTab();
 }
 
-// ---------------- YENİ: AI PLANNER ALGORİTMASI ----------------
-// --- 1. CORS KORUMALI VE İKONLU AI ALGORİTMASI ---
 async function generateFlightBriefing() {
     const resultsDiv = document.getElementById("planner-results");
     resultsDiv.innerHTML = `<div style='text-align:center; padding:20px; color:var(--neon-cyan); display:flex; justify-content:center; align-items:center; gap:8px;'>
@@ -94,7 +74,6 @@ async function generateFlightBriefing() {
 
     let depMetar = "Fetching real-time weather...", arrMetar = "Fetching real-time weather...";
     try {
-        // YENİ: NOAA'yı kendi güvenli Vercel sunucumuz üzerinden çekiyoruz
         const res = await fetch(`${API_URL}?action=metar&icao=${dep},${arr}`);
         const data = await res.json();
         if (data && data.length > 0) {
@@ -130,7 +109,6 @@ async function generateFlightBriefing() {
     `;
 }
 
-// --- 2. CORS KORUMALI VE İKONLU ATIS/METAR BUTONU ---
 async function loadAtisMetar(sessionId, icao) {
     const btn = document.getElementById(`btn-atis-${icao}`);
     const infoBox = document.getElementById(`info-${icao}`);
@@ -145,7 +123,6 @@ async function loadAtisMetar(sessionId, icao) {
 
         let metarText = "Real METAR data unavailable.";
         try {
-            // YENİ: NOAA'yı kendi güvenli Vercel sunucumuz üzerinden çekiyoruz
             const metarRes = await fetch(`${API_URL}?action=metar&icao=${icao}`);
             const metarData = await metarRes.json();
             if(metarData && metarData.length > 0 && metarData[0].rawOb) {
@@ -196,8 +173,8 @@ function updateTrendingWidget() {
     const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
 
     document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
-    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Departing</span></li>`).join("") || "<li>Loading...</li>";
-    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arriving</span></li>`).join("") || "<li>Loading...</li>";
+    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Departing</span></li>`).join("") || "<li>No data</li>";
+    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arriving</span></li>`).join("") || "<li>No data</li>";
 }
 
 function setSort(col) { if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; } renderActiveTab(); }
@@ -232,7 +209,7 @@ function renderFlightsTable(serverFilter, searchTerm) {
     filtered.forEach(f => {
         const tr = document.createElement('tr');
         tr.onclick = () => openPilotCard(f);
-        tr.innerHTML = `<td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td><td>${f.username}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td><td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td><td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>`;
+        tr.innerHTML = `<td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td><td>${f.username || "Unknown"}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td><td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td><td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>`;
         fragment.appendChild(tr);
     });
     tbody.innerHTML = ""; tbody.appendChild(fragment);
@@ -308,38 +285,6 @@ function toggleAtcAccordion(apt) {
     el.style.display = (el.style.display === "none") ? "flex" : "none";
 }
 
-async function loadAtisMetar(sessionId, icao) {
-    const btn = document.getElementById(`btn-atis-${icao}`);
-    const infoBox = document.getElementById(`info-${icao}`);
-    btn.innerText = "Fetching Data...";
-    infoBox.style.display = "block";
-    infoBox.innerHTML = "Connecting to satellites... 📡";
-
-    try {
-        const atisRes = await fetch(`${API_URL}?action=atis&sessionId=${sessionId}&icao=${icao}`);
-        const atisData = await atisRes.json();
-        let atisText = (atisData.errorCode === 0 && atisData.result) ? atisData.result : "No Active ATIS on this server.";
-
-        let metarText = "Real METAR data unavailable.";
-        try {
-            const metarRes = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icao}&format=json`);
-            const metarData = await metarRes.json();
-            if(metarData && metarData.length > 0 && metarData[0].rawOb) {
-                metarText = metarData[0].rawOb;
-            }
-        } catch(e) { console.error("METAR failed:", e); }
-
-        infoBox.innerHTML = `
-            <div style="margin-bottom:8px;"><strong style="color:var(--neon-cyan);">📡 IF ATIS:</strong><br>${atisText}</div>
-            <div style="border-top:1px dashed rgba(255,255,255,0.2); padding-top:8px;"><strong style="color:#00FF00;">☁️ REAL METAR:</strong><br>${metarText}</div>
-        `;
-        btn.style.display = "none"; 
-    } catch(e) {
-        infoBox.innerHTML = "Error loading aviation data.";
-        btn.innerText = "Try Again";
-    }
-}
-
 function renderLeaderboard(searchTerm) {
     const voMap = {};
     flightsData.forEach(flight => {
@@ -370,7 +315,6 @@ function renderLeaderboard(searchTerm) {
     tbody.innerHTML = ""; tbody.appendChild(fragment);
 }
 
-// ---------------- PANEL KONTROLLERİ ----------------
 function openPanel(panelId) {
     document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('active'));
     document.getElementById(panelId).classList.add('active');
@@ -391,26 +335,82 @@ function openPilotCard(f) {
     document.getElementById("pc-alt").innerText = `${Math.round(f.altitude)} ft`;
     document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
     document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
+    
+    document.getElementById("pc-origin").innerText = f.originAirport || "N/A";
+    document.getElementById("pc-dest").innerText = f.destinationAirport || "N/A";
 
     document.getElementById("live-stats-container").classList.add("hidden");
     const btnStats = document.getElementById("btn-load-stats");
     btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
-
-    document.getElementById("active-flight-route").classList.add("hidden");
-    document.getElementById("waypoints-container").classList.remove("open");
     
-    fetch(`${API_URL}?action=route&sessionId=${f.sessionId}&flightId=${f.flightId}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.route && data.route.length > 0) {
-                document.getElementById("active-flight-route").classList.remove("hidden");
-                document.getElementById("pc-origin").innerText = data.originAirport || "N/A";
-                document.getElementById("pc-dest").innerText = data.destinationAirport || "N/A";
-                document.getElementById("pc-waypoints-list").innerHTML = data.route.map(wp => `<li class="wp-item"><span class="wp-icon">◆</span> <span>${wp.name}</span></li>`).join("");
-            }
-        }).catch(err => console.error(err));
+    const btnMap = document.getElementById("btn-show-map");
+    btnMap.style.display = "block"; // Butonu görünür yap
 
     openPanel("pilot-side-panel");
+}
+
+function showFlightOnMap() {
+    if (!currentSelectedFlight) return;
+    
+    const lat = currentSelectedFlight.latitude;
+    const lon = currentSelectedFlight.longitude;
+
+    // Harita div'i görünür yap
+    const mapContainer = document.getElementById("flight-map-container");
+    mapContainer.classList.remove("hidden");
+    
+    // Haritayı başlat
+    if (!leafletMap) {
+        // Leaflet CSS eklendi (HTML'de head'e eklemelisiniz ama dinamik ekliyoruz)
+        if(!document.getElementById('leaflet-css')) {
+            const link = document.createElement('link');
+            link.id = 'leaflet-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+        }
+
+        // Haritayı oluştur
+        leafletMap = L.map('flight-map').setView([lat, lon], 6);
+        
+        // CartoDB Dark Matter katmanı (Modern koyu tema)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(leafletMap);
+    } else {
+        // Zaten varsa sadece merkezi güncelle
+        leafletMap.setView([lat, lon], 6);
+    }
+    
+    // Uçak ikonunu oluştur
+    const planeIcon = L.divIcon({
+        className: 'custom-plane-icon',
+        html: `<div style="transform: rotate(${currentSelectedFlight.heading}deg); color: #00F5D4; font-size: 24px;">✈️</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+
+    // Önceki işaretçiyi temizle
+    leafletMap.eachLayer((layer) => {
+        if (layer instanceof L.Marker) {
+            leafletMap.removeLayer(layer);
+        }
+    });
+
+    // Yeni işaretçiyi ekle
+    L.marker([lat, lon], {icon: planeIcon})
+     .addTo(leafletMap)
+     .bindPopup(`<b>${currentSelectedFlight.callsign}</b><br>Alt: ${Math.round(currentSelectedFlight.altitude)} ft<br>Spd: ${Math.round(currentSelectedFlight.speed)} kts`)
+     .openPopup();
+     
+     // Harita boyutunu düzelt (açıldığında tam render alması için)
+     setTimeout(() => leafletMap.invalidateSize(), 100);
+}
+
+function closeMap() {
+    document.getElementById("flight-map-container").classList.add("hidden");
 }
 
 function toggleWaypoints() { document.getElementById("waypoints-container").classList.toggle("open"); }
@@ -461,6 +461,7 @@ function openSettingsPanel() {
         document.getElementById("profile-view").classList.add("hidden");
     }
 }
+
 function openProfilePanel() { openSettingsPanel(); }
 
 function saveProfileSettings() {
@@ -470,85 +471,6 @@ function saveProfileSettings() {
 
 function logoutProfile() { localStorage.removeItem("if_username"); openSettingsPanel(); }
 
-async function fetchProfileStats(username) {
-    document.getElementById("prof-name").innerText = username;
-    document.getElementById("prof-va").innerText = "Loading stats...";
-    try {
-        const res = await fetch(`${API_URL}?action=stats&username=${username}`);
-        const data = await res.json();
-        if (data.result && data.result.length > 0) {
-            const stats = data.result[0];
-            document.getElementById("prof-va").innerText = stats.virtualOrganization || "No Virtual Organization";
-            document.getElementById("prof-grade").innerText = stats.grade || "-";
-            document.getElementById("prof-time").innerText = `${Math.round((stats.flightTime || 0) / 60)} hrs`;
-            document.getElementById("prof-landings").innerText = stats.landingCount || 0;
-            document.getElementById("prof-atc").innerText = stats.atcOperations || 0;
-        } else { document.getElementById("prof-va").innerText = "User not found."; }
-    } catch(e) { document.getElementById("prof-va").innerText = "Error fetching stats."; }
-}
-// ----------------------------------------------------
-// YENİ: SUPABASE AUTO-PIREP (OTOMATİK UÇUŞ KAYDEDİCİ)
-// ----------------------------------------------------
-let myLastFlightState = null;
-
-function checkAutoPirep(allFlights) {
-    const myUsername = localStorage.getItem("if_username");
-    if (!myUsername) return; // Kullanıcı giriş yapmamışsa takip etme
-
-    // Sadece giriş yapan pilotun kendi uçağını bul
-    const myFlight = allFlights.find(f => (f.username || "").toLowerCase() === myUsername.toLowerCase());
-    
-    if (!myFlight) {
-        myLastFlightState = null; 
-        return; 
-    }
-
-    // Uçak havalandıysa durumu 'airborne' (havada) olarak işaretle
-    if (myFlight.altitude > 2000) {
-        myLastFlightState = 'airborne';
-    }
-    // Uçak havadayken yere inip yavaşladıysa (Auto-PIREP Tetikleyici)
-    else if (myLastFlightState === 'airborne' && myFlight.altitude < 100 && myFlight.speed < 50) {
-        myLastFlightState = 'landed';
-        logFlightToSupabase(myFlight); // Supabase'e gönder!
-    }
-}
-
-async function logFlightToSupabase(f) {
-    // Sadece rotası biliniyorsa kaydet
-    if(f.originAirport === "Loading" || f.originAirport === "N/A") return; 
-
-    const payload = {
-        user_id: f.userId || "0000",
-        username: f.username,
-        callsign: f.callsign,
-        vo_name: f.virtualOrganization,
-        aircraft: f.aircraftName,
-        origin: f.originAirport,
-        destination: f.destinationAirport,
-        flight_time: 0, // İleride geliştirilebilir
-        landing_rate: 0 // İleride geliştirilebilir
-    };
-
-    try {
-        await fetch(`${API_URL}?action=career`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        console.log("✅ Auto-PIREP: Flight successfully logged to Supabase!");
-        
-        // Eğer profil paneli açıksa logbook'u yenile
-        if(!document.getElementById("profile-view").classList.contains("hidden")) {
-            fetchProfileStats(payload.username);
-        }
-    } catch(e) { console.error("PIREP Error", e); }
-}
-
-
-// ----------------------------------------------------
-// GÜNCELLEME: PROFİL VERİLERİNİ VE KARİYERİ ÇEKME
-// ----------------------------------------------------
 async function fetchProfileStats(username) {
     document.getElementById("prof-name").innerText = username;
     document.getElementById("prof-va").innerText = "Loading stats...";
@@ -567,7 +489,6 @@ async function fetchProfileStats(username) {
             document.getElementById("prof-atc").innerText = stats.atcOperations || 0;
         } else { document.getElementById("prof-va").innerText = "User not found on Live API."; }
 
-        // SUPABASE'DEN GEÇMİŞ UÇUŞLARI LİSTELE
         const resCareer = await fetch(`${API_URL}?action=career&username=${username}`);
         const dataCareer = await resCareer.json();
         
@@ -591,4 +512,54 @@ async function fetchProfileStats(username) {
         document.getElementById("prof-va").innerText = "Error fetching stats."; 
         logContainer.innerHTML = "<div style='color:#FF3366; text-align:center;'>Database connection error.</div>";
     }
+}
+
+let myLastFlightState = null;
+
+function checkAutoPirep(allFlights) {
+    const myUsername = localStorage.getItem("if_username");
+    if (!myUsername) return; 
+
+    const myFlight = allFlights.find(f => (f.username || "").toLowerCase() === myUsername.toLowerCase());
+    
+    if (!myFlight) {
+        myLastFlightState = null; 
+        return; 
+    }
+
+    if (myFlight.altitude > 2000) {
+        myLastFlightState = 'airborne';
+    }
+    else if (myLastFlightState === 'airborne' && myFlight.altitude < 100 && myFlight.speed < 50) {
+        myLastFlightState = 'landed';
+        logFlightToSupabase(myFlight); 
+    }
+}
+
+async function logFlightToSupabase(f) {
+    if(f.originAirport === "Loading" || f.originAirport === "N/A") return; 
+
+    const payload = {
+        user_id: f.userId || "0000",
+        username: f.username,
+        callsign: f.callsign,
+        vo_name: f.virtualOrganization,
+        aircraft: f.aircraftName,
+        origin: f.originAirport,
+        destination: f.destinationAirport,
+        flight_time: 0, 
+        landing_rate: 0 
+    };
+
+    try {
+        await fetch(`${API_URL}?action=career`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if(!document.getElementById("profile-view").classList.contains("hidden")) {
+            fetchProfileStats(payload.username);
+        }
+    } catch(e) { console.error("PIREP Error", e); }
 }
