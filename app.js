@@ -6,6 +6,7 @@ let currentSelectedFlight = null; let searchTimeout = null;
 let leafletMap = null; // Harita nesnesi
 let routePolyline = null; // Rota çizgisi
 
+// 1. ANA VERİ ÇEKİCİ (Waypoint mantığı silindi, yerine arka plan tarayıcısı eklendi)
 async function fetchFlightData() {
     try {
         const res = await fetch(API_URL);
@@ -17,7 +18,7 @@ async function fetchFlightData() {
         
         updateAtcBadges(); 
         
-        // Uçaklara geçici Loading atıyoruz ki arka plan tarayıcısı bulabilsin
+        // API ana listede rota vermez! Arka plan tarayıcısı bulana kadar Loading atıyoruz.
         flightsData.forEach(f => {
             if (!f.originAirport) f.originAirport = "Loading";
             if (!f.destinationAirport) f.destinationAirport = "Loading";
@@ -28,9 +29,98 @@ async function fetchFlightData() {
         
         if (flightsData.length > 0) {
             checkAutoPirep(flightsData);
-            fillTrendsInBackground(); // SİLİNEN HAYATİ FONKSİYON BURADA
+            fillTrendsInBackground(); // EKSİK ROTALARI BU BULACAK
         }
     } catch(e) { console.error("Fetch Error:", e); }
+}
+
+// 2. ARKA PLAN ROTA TARAYICISI (fetchFlightData'nın hemen altına ekle)
+async function fillTrendsInBackground() {
+    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
+    if (missingRoutes.length === 0) return; 
+    
+    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
+    
+    try {
+        const res = await fetch(`${API_URL}?action=batch_routes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const updates = await res.json();
+        
+        updates.forEach(u => {
+            const flt = flightsData.find(f => f.flightId === u.flightId);
+            if (flt) {
+                flt.originAirport = u.origin || "N/A";
+                flt.destinationAirport = u.dest || "N/A";
+            }
+        });
+        updateTrendingWidget(); 
+    } catch (e) { console.error("Trend update failed", e); }
+}
+
+// 3. TREND TABLOSU GÜNCELLEYİCİ (Loading filtreleri eklendi)
+function updateTrendingWidget() {
+    const srvFilter = document.getElementById("trendServer").value;
+    const acCounts = {};
+    const depCounts = {};
+    const arrCounts = {};
+
+    flightsData.forEach(f => {
+        if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
+        
+        if (f.aircraftName && f.aircraftName !== "Unknown Aircraft") {
+            acCounts[f.aircraftName] = (acCounts[f.aircraftName] || 0) + 1;
+        }
+        
+        if (f.originAirport && f.originAirport !== "N/A" && f.originAirport !== "Loading" && f.originAirport.length > 2) {
+            depCounts[f.originAirport] = (depCounts[f.originAirport] || 0) + 1;
+        }
+
+        if (f.destinationAirport && f.destinationAirport !== "N/A" && f.destinationAirport !== "Loading" && f.destinationAirport.length > 2) {
+            arrCounts[f.destinationAirport] = (arrCounts[f.destinationAirport] || 0) + 1;
+        }
+    });
+
+    const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+    const topDep = Object.entries(depCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+    const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
+
+    document.getElementById("trend-aircraft").innerHTML = topAc.length > 0 ? topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
+    document.getElementById("trend-dep").innerHTML = topDep.length > 0 ? topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Dep</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
+    document.getElementById("trend-arr").innerHTML = topArr.length > 0 ? topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arr</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
+}
+
+// 4. KART AÇILIŞI VE HARİTA BUTONU (Butonun kaybolma sorunu çözüldü)
+function openPilotCard(f) {
+    currentSelectedFlight = f; 
+    document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
+    document.getElementById("pc-va").innerText = f.virtualOrganization || "-";
+    document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
+    document.getElementById("pc-ac").innerText = f.aircraftName || "-";
+    document.getElementById("pc-livery").innerText = f.liveryName || "-";
+    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude || 0)} ft`;
+    document.getElementById("pc-spd").innerText = `${Math.round(f.speed || 0)} kts`;
+    document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
+    
+    document.getElementById("pc-origin").innerText = f.originAirport || "N/A";
+    document.getElementById("pc-dest").innerText = f.destinationAirport || "N/A";
+
+    document.getElementById("live-stats-container").classList.add("hidden");
+    const btnStats = document.getElementById("btn-load-stats");
+    btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
+    
+    const btnMap = document.getElementById("btn-show-map");
+    if (btnMap) {
+        if (!f.latitude || !f.longitude) {
+            btnMap.style.display = "none";
+        } else {
+            btnMap.style.display = "block";
+        }
+    }
+
+    openPanel("pilot-side-panel");
 }
 
 // Arka planda eksik rotaları çeken sistem
