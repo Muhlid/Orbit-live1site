@@ -18,11 +18,15 @@ async function fetchFlightData() {
         updateAtcBadges(); 
         
         // Kalkış/Varış verilerini uçuş planından çek
+                // Kalkış/Varış verilerini uçuş planından çek (Eksikse N/A yaz)
         flightsData.forEach(flight => {
              if (flight.flightPlan && flight.flightPlan.waypoints && flight.flightPlan.waypoints.length > 0) {
                  const waypoints = flight.flightPlan.waypoints;
                  flight.originAirport = waypoints[0].name || "N/A";
                  flight.destinationAirport = waypoints[waypoints.length - 1].name || "N/A";
+             } else {
+                 flight.originAirport = "N/A";
+                 flight.destinationAirport = "N/A";
              }
         });
 
@@ -155,26 +159,28 @@ function updateTrendingWidget() {
     const depCounts = {};
     const arrCounts = {};
 
-    flightsData.forEach(f => {
+        flightsData.forEach(f => {
         if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
         
-        const ac = f.aircraftName;
-        if (ac && ac !== "Unknown Aircraft") acCounts[ac] = (acCounts[ac] || 0) + 1;
-        
-        const dep = f.originAirport;
-        if (dep && dep !== "N/A" && dep !== "Loading" && dep.length > 2) depCounts[dep] = (depCounts[dep] || 0) + 1;
-
-        const arr = f.destinationAirport;
-        if (arr && arr !== "N/A" && arr !== "Loading" && arr.length > 2) arrCounts[arr] = (arrCounts[arr] || 0) + 1;
+        if (f.aircraftName && f.aircraftName !== "Unknown Aircraft") {
+            acCounts[f.aircraftName] = (acCounts[f.aircraftName] || 0) + 1;
+        }
+        // Sadece geçerli havalimanıysa (Loading veya N/A değilse) say
+        if (f.originAirport && f.originAirport !== "N/A" && f.originAirport !== "Loading" && f.originAirport.length > 2) {
+            depCounts[f.originAirport] = (depCounts[f.originAirport] || 0) + 1;
+        }
+        if (f.destinationAirport && f.destinationAirport !== "N/A" && f.destinationAirport !== "Loading" && f.destinationAirport.length > 2) {
+            arrCounts[f.destinationAirport] = (arrCounts[f.destinationAirport] || 0) + 1;
+        }
     });
 
     const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
     const topDep = Object.entries(depCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
     const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
 
-    document.getElementById("trend-aircraft").innerHTML = topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") || "<li>No data</li>";
-    document.getElementById("trend-dep").innerHTML = topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Departing</span></li>`).join("") || "<li>No data</li>";
-    document.getElementById("trend-arr").innerHTML = topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arriving</span></li>`).join("") || "<li>No data</li>";
+    document.getElementById("trend-aircraft").innerHTML = topAc.length > 0 ? topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") : "<li><span style='color:gray;'>Not enough data</span></li>";
+    document.getElementById("trend-dep").innerHTML = topDep.length > 0 ? topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Dep</span></li>`).join("") : "<li><span style='color:gray;'>Not enough data</span></li>";
+    document.getElementById("trend-arr").innerHTML = topArr.length > 0 ? topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arr</span></li>`).join("") : "<li><span style='color:gray;'>Not enough data</span></li>";
 }
 
 function setSort(col) { if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; } renderActiveTab(); }
@@ -343,8 +349,13 @@ function openPilotCard(f) {
     const btnStats = document.getElementById("btn-load-stats");
     btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
     
+        // YENİ: Harita butonunu göster/gizle
     const btnMap = document.getElementById("btn-show-map");
-    btnMap.style.display = "block"; // Butonu görünür yap
+    if (f.latitude === undefined || f.longitude === undefined || f.latitude === null || f.longitude === null) {
+        btnMap.style.display = "none";
+    } else {
+        btnMap.style.display = "block";
+    }
 
     openPanel("pilot-side-panel");
 }
@@ -352,10 +363,15 @@ function openPilotCard(f) {
 function showFlightOnMap() {
     if (!currentSelectedFlight) return;
     
-    const lat = currentSelectedFlight.latitude;
-    const lon = currentSelectedFlight.longitude;
+    // Geçersiz koordinat koruması (parseFloat ve isNaN ile)
+    const lat = parseFloat(currentSelectedFlight.latitude);
+    const lon = parseFloat(currentSelectedFlight.longitude);
+    
+    if (isNaN(lat) || isNaN(lon)) {
+        alert("Flight coordinates are currently unavailable from the server.");
+        return;
+    }
 
-    // Harita div'i görünür yap
     const mapContainer = document.getElementById("flight-map-container");
     mapContainer.classList.remove("hidden");
     
