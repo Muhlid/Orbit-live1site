@@ -3,10 +3,8 @@ const API_URL = "https://orbtlive.vercel.app/api/flights";
 let flightsData = []; let atcData = [];
 let activeTab = "expert"; let sortCol = "callsign"; let sortAsc = true;
 let currentSelectedFlight = null; let searchTimeout = null;
-let leafletMap = null; // Harita nesnesi
-let routePolyline = null; // Rota çizgisi
+let leafletMap = null; 
 
-// 1. ANA VERİ ÇEKİCİ (Waypoint mantığı silindi, yerine arka plan tarayıcısı eklendi)
 async function fetchFlightData() {
     try {
         const res = await fetch(API_URL);
@@ -18,135 +16,32 @@ async function fetchFlightData() {
         
         updateAtcBadges(); 
         
-        // API ana listede rota vermez! Arka plan tarayıcısı bulana kadar Loading atıyoruz.
-        flightsData.forEach(f => {
-            if (!f.originAirport) f.originAirport = "Loading";
-            if (!f.destinationAirport) f.destinationAirport = "Loading";
+        // KALKIŞ VE VARIŞI DOĞRUDAN UÇUŞ VERİSİNDEN BULMA (EKSİKSE N/A)
+        flightsData.forEach(flight => {
+             // API'den rota (waypoint) geliyorsa
+             if (flight.flightPlan && flight.flightPlan.waypoints && flight.flightPlan.waypoints.length > 0) {
+                 const waypoints = flight.flightPlan.waypoints;
+                 flight.originAirport = waypoints[0].name || "N/A";
+                 flight.destinationAirport = waypoints[waypoints.length - 1].name || "N/A";
+             } 
+             // Zaten önbellekten origin/destination geliyorsa
+             else if (flight.origin && flight.destination) {
+                 flight.originAirport = flight.origin;
+                 flight.destinationAirport = flight.destination;
+             }
+             // Hiçbiri yoksa N/A atıyoruz ki Loading'de takılıp kalmasın
+             else {
+                 flight.originAirport = "N/A";
+                 flight.destinationAirport = "N/A";
+             }
         });
 
         updateTrendingWidget(); 
         renderActiveTab();
         
-        if (flightsData.length > 0) {
-            checkAutoPirep(flightsData);
-            fillTrendsInBackground(); // EKSİK ROTALARI BU BULACAK
-        }
+        if (flightsData.length > 0) checkAutoPirep(flightsData);
+
     } catch(e) { console.error("Fetch Error:", e); }
-}
-
-// 2. ARKA PLAN ROTA TARAYICISI (fetchFlightData'nın hemen altına ekle)
-async function fillTrendsInBackground() {
-    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
-    if (missingRoutes.length === 0) return; 
-    
-    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
-    
-    try {
-        const res = await fetch(`${API_URL}?action=batch_routes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const updates = await res.json();
-        
-        updates.forEach(u => {
-            const flt = flightsData.find(f => f.flightId === u.flightId);
-            if (flt) {
-                flt.originAirport = u.origin || "N/A";
-                flt.destinationAirport = u.dest || "N/A";
-            }
-        });
-        updateTrendingWidget(); 
-    } catch (e) { console.error("Trend update failed", e); }
-}
-
-// 3. TREND TABLOSU GÜNCELLEYİCİ (Loading filtreleri eklendi)
-function updateTrendingWidget() {
-    const srvFilter = document.getElementById("trendServer").value;
-    const acCounts = {};
-    const depCounts = {};
-    const arrCounts = {};
-
-    flightsData.forEach(f => {
-        if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
-        
-        if (f.aircraftName && f.aircraftName !== "Unknown Aircraft") {
-            acCounts[f.aircraftName] = (acCounts[f.aircraftName] || 0) + 1;
-        }
-        
-        if (f.originAirport && f.originAirport !== "N/A" && f.originAirport !== "Loading" && f.originAirport.length > 2) {
-            depCounts[f.originAirport] = (depCounts[f.originAirport] || 0) + 1;
-        }
-
-        if (f.destinationAirport && f.destinationAirport !== "N/A" && f.destinationAirport !== "Loading" && f.destinationAirport.length > 2) {
-            arrCounts[f.destinationAirport] = (arrCounts[f.destinationAirport] || 0) + 1;
-        }
-    });
-
-    const topAc = Object.entries(acCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
-    const topDep = Object.entries(depCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
-    const topArr = Object.entries(arrCounts).sort((a,b) => b[1] - a[1]).slice(0, 4);
-
-    document.getElementById("trend-aircraft").innerHTML = topAc.length > 0 ? topAc.map(item => `<li><span>${item[0]}</span><span class="val">${item[1]}</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
-    document.getElementById("trend-dep").innerHTML = topDep.length > 0 ? topDep.map(item => `<li><span>🛫 ${item[0]}</span><span class="val" style="color:#00FF00;">${item[1]} Dep</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
-    document.getElementById("trend-arr").innerHTML = topArr.length > 0 ? topArr.map(item => `<li><span>🛬 ${item[0]}</span><span class="val" style="color:var(--neon-pink);">${item[1]} Arr</span></li>`).join("") : "<li><span style='color:gray;'>Loading...</span></li>";
-}
-
-// 4. KART AÇILIŞI VE HARİTA BUTONU (Butonun kaybolma sorunu çözüldü)
-function openPilotCard(f) {
-    currentSelectedFlight = f; 
-    document.getElementById("pc-callsign").innerText = f.callsign || "Unknown";
-    document.getElementById("pc-va").innerText = f.virtualOrganization || "-";
-    document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
-    document.getElementById("pc-ac").innerText = f.aircraftName || "-";
-    document.getElementById("pc-livery").innerText = f.liveryName || "-";
-    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude || 0)} ft`;
-    document.getElementById("pc-spd").innerText = `${Math.round(f.speed || 0)} kts`;
-    document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
-    
-    document.getElementById("pc-origin").innerText = f.originAirport || "N/A";
-    document.getElementById("pc-dest").innerText = f.destinationAirport || "N/A";
-
-    document.getElementById("live-stats-container").classList.add("hidden");
-    const btnStats = document.getElementById("btn-load-stats");
-    btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
-    
-    const btnMap = document.getElementById("btn-show-map");
-    if (btnMap) {
-        if (!f.latitude || !f.longitude) {
-            btnMap.style.display = "none";
-        } else {
-            btnMap.style.display = "block";
-        }
-    }
-
-    openPanel("pilot-side-panel");
-}
-
-// Arka planda eksik rotaları çeken sistem
-async function fillTrendsInBackground() {
-    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
-    if (missingRoutes.length === 0) return; 
-    
-    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
-    
-    try {
-        const res = await fetch(`${API_URL}?action=batch_routes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const updates = await res.json();
-        
-        updates.forEach(u => {
-            const flt = flightsData.find(f => f.flightId === u.flightId);
-            if (flt) {
-                flt.originAirport = u.origin || "N/A";
-                flt.destinationAirport = u.dest || "N/A";
-            }
-        });
-        updateTrendingWidget(); 
-    } catch (e) { console.error("Trend update failed", e); }
 }
 
 fetchFlightData();
@@ -175,21 +70,20 @@ function switchTab(tabId) {
 
 async function generateFlightBriefing() {
     const resultsDiv = document.getElementById("planner-results");
-    resultsDiv.innerHTML = `<div style='text-align:center; padding:20px; color:var(--neon-cyan); display:flex; justify-content:center; align-items:center; gap:8px;'>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Analyzing ATC frequencies and satellite weather data...</div>`;
+    resultsDiv.innerHTML = `<div style='text-align:center; padding:20px; color:var(--neon-cyan);'>Analyzing ATC frequencies and satellite weather data...</div>`;
 
     let activeAirports = [...new Set(atcData.filter(a => a.type !== 6 && a.airportName && a.airportName.length === 4).map(a => a.airportName))];
     if (activeAirports.length < 2) {
-        resultsDiv.innerHTML = "<div style='color:#FF3366; text-align:center;'>Not enough active ATCs right now to generate a fully staffed route.</div>";
+        resultsDiv.innerHTML = "<div style='color:#FF3366; text-align:center;'>Not enough active ATCs right now to generate a route.</div>";
         return;
     }
 
     activeAirports.sort(() => 0.5 - Math.random());
     let dep = activeAirports[0]; let arr = activeAirports[1];
 
-    let depMetar = "Fetching real-time weather...", arrMetar = "Fetching real-time weather...";
+    let depMetar = "Real-time weather unavailable...", arrMetar = "Real-time weather unavailable...";
     try {
-        const res = await fetch(`${API_URL}?action=metar&icao=${dep},${arr}`);
+        const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=${dep},${arr}&format=json`);
         const data = await res.json();
         if (data && data.length > 0) {
             data.forEach(m => {
@@ -197,28 +91,18 @@ async function generateFlightBriefing() {
                 if (m.icaoId === arr) arrMetar = m.rawOb;
             });
         }
-    } catch (e) { console.error("Weather API Error", e); }
+    } catch (e) {}
 
     resultsDiv.innerHTML = `
         <div style="background:rgba(255,255,255,0.05); padding:20px; border-left:4px solid var(--neon-cyan); border-radius:8px;">
-            <h3 style="margin-top:0; color:var(--neon-pink); font-size:22px; display:flex; align-items:center; gap:8px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                Recommended Route: ${dep} - ${arr}
-            </h3>
-            <p style="color:#ccc; font-size:13px;">Both airports currently have active ATC controllers on duty.</p>
-            
+            <h3 style="margin-top:0; color:var(--neon-pink);">Recommended Route: ${dep} - ${arr}</h3>
             <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:15px; border:1px solid rgba(0,255,0,0.2);">
-                <strong style="color:#00FF00; display:flex; align-items:center; gap:5px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13.5l-9.1-4.6L9 2 7.3 2.8l3.2 6.4-5 1-2.4-2L1 9.5l3.2 5.5.3 1H22v-2.5z"/></svg> Departure Weather (${dep}):
-                </strong>
-                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${depMetar}</div>
+                <strong style="color:#00FF00;">Departure Weather (${dep}):</strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px;">${depMetar}</div>
             </div>
-            
             <div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:5px; margin-top:10px; border:1px solid rgba(0,245,212,0.2);">
-                <strong style="color:var(--neon-cyan); display:flex; align-items:center; gap:5px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.5l-9.1-4.6L9 5 7.3 5.8l3.2 6.4-5 1-2.4-2L1 12.5l3.2 5.5.3 1H22v-2.5z" transform="matrix(1 0 0 -1 0 24)"/></svg> Arrival Weather (${arr}):
-                </strong>
-                <div style="font-family:monospace; color:#aaa; margin-top:8px; line-height:1.4;">${arrMetar}</div>
+                <strong style="color:var(--neon-cyan);">Arrival Weather (${arr}):</strong>
+                <div style="font-family:monospace; color:#aaa; margin-top:8px;">${arrMetar}</div>
             </div>
         </div>
     `;
@@ -238,24 +122,16 @@ async function loadAtisMetar(sessionId, icao) {
 
         let metarText = "Real METAR data unavailable.";
         try {
-            const metarRes = await fetch(`${API_URL}?action=metar&icao=${icao}`);
+            const metarRes = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icao}&format=json`);
             const metarData = await metarRes.json();
             if(metarData && metarData.length > 0 && metarData[0].rawOb) {
                 metarText = metarData[0].rawOb;
             }
-        } catch(e) { console.error("METAR failed:", e); }
+        } catch(e) {}
 
         infoBox.innerHTML = `
-            <div style="margin-bottom:8px;">
-                <strong style="color:var(--neon-cyan); display:flex; align-items:center; gap:4px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M12 12v9"/></svg> IF ATIS:
-                </strong><br>${atisText}
-            </div>
-            <div style="border-top:1px dashed rgba(255,255,255,0.2); padding-top:8px;">
-                <strong style="color:#00FF00; display:flex; align-items:center; gap:4px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19C19.985 19 22 16.985 22 14.5 22 12.164 20.22 10.246 17.935 10.029 17.158 6.549 14.07 4 10.5 4 6.358 4 3 7.358 3 11.5 3 11.758 3.013 12.012 3.039 12.26 1.34 13.064 0 14.86 0 17 0 19.761 2.239 22 5 22H17.5z"/></svg> REAL METAR:
-                </strong><br>${metarText}
-            </div>
+            <div style="margin-bottom:8px;"><strong style="color:var(--neon-cyan);">IF ATIS:</strong><br>${atisText}</div>
+            <div style="border-top:1px dashed rgba(255,255,255,0.2); padding-top:8px;"><strong style="color:#00FF00;">REAL METAR:</strong><br>${metarText}</div>
         `;
         btn.style.display = "none"; 
     } catch(e) {
@@ -264,22 +140,24 @@ async function loadAtisMetar(sessionId, icao) {
     }
 }
 
+// GÜNCELLENMİŞ TREND WIDGET
 function updateTrendingWidget() {
     const srvFilter = document.getElementById("trendServer").value;
     const acCounts = {};
     const depCounts = {};
     const arrCounts = {};
 
-        flightsData.forEach(f => {
+    flightsData.forEach(f => {
         if (srvFilter !== "ALL" && !(f.serverName || "").toLowerCase().includes(srvFilter)) return;
         
         if (f.aircraftName && f.aircraftName !== "Unknown Aircraft") {
             acCounts[f.aircraftName] = (acCounts[f.aircraftName] || 0) + 1;
         }
-        // Sadece geçerli havalimanıysa (Loading veya N/A değilse) say
+        
         if (f.originAirport && f.originAirport !== "N/A" && f.originAirport !== "Loading" && f.originAirport.length > 2) {
             depCounts[f.originAirport] = (depCounts[f.originAirport] || 0) + 1;
         }
+
         if (f.destinationAirport && f.destinationAirport !== "N/A" && f.destinationAirport !== "Loading" && f.destinationAirport.length > 2) {
             arrCounts[f.destinationAirport] = (arrCounts[f.destinationAirport] || 0) + 1;
         }
@@ -326,7 +204,7 @@ function renderFlightsTable(serverFilter, searchTerm) {
     filtered.forEach(f => {
         const tr = document.createElement('tr');
         tr.onclick = () => openPilotCard(f);
-        tr.innerHTML = `<td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td><td>${f.username || "Unknown"}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td><td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td><td>${Math.round(f.speed)}</td><td>${Math.round(f.altitude)}</td>`;
+        tr.innerHTML = `<td style="font-weight:bold; color:var(--neon-cyan);">${f.callsign}</td><td>${f.username || "Unknown"}</td><td>${f.aircraftName}</td><td>${f.liveryName}</td><td><span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:12px; font-size:11px;">${f.virtualOrganization || "-"}</span></td><td>${Math.round(f.speed || 0)}</td><td>${Math.round(f.altitude || 0)}</td>`;
         fragment.appendChild(tr);
     });
     tbody.innerHTML = ""; tbody.appendChild(fragment);
@@ -449,8 +327,8 @@ function openPilotCard(f) {
     document.getElementById("pc-username").innerText = `Pilot: ${f.username || "Guest"}`;
     document.getElementById("pc-ac").innerText = f.aircraftName || "-";
     document.getElementById("pc-livery").innerText = f.liveryName || "-";
-    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude)} ft`;
-    document.getElementById("pc-spd").innerText = `${Math.round(f.speed)} kts`;
+    document.getElementById("pc-alt").innerText = `${Math.round(f.altitude || 0)} ft`;
+    document.getElementById("pc-spd").innerText = `${Math.round(f.speed || 0)} kts`;
     document.getElementById("pc-srv").innerText = f.serverName || "Unknown Server";
     
     document.getElementById("pc-origin").innerText = f.originAirport || "N/A";
@@ -460,12 +338,13 @@ function openPilotCard(f) {
     const btnStats = document.getElementById("btn-load-stats");
     btnStats.innerText = "Load Live Stats"; btnStats.disabled = false;
     
-        // YENİ: Harita butonunu göster/gizle
     const btnMap = document.getElementById("btn-show-map");
-    if (f.latitude === undefined || f.longitude === undefined || f.latitude === null || f.longitude === null) {
-        btnMap.style.display = "none";
-    } else {
-        btnMap.style.display = "block";
+    if (btnMap) {
+        if (f.latitude === undefined || f.longitude === undefined || f.latitude === null || f.longitude === null) {
+            btnMap.style.display = "none";
+        } else {
+            btnMap.style.display = "block";
+        }
     }
 
     openPanel("pilot-side-panel");
@@ -474,7 +353,6 @@ function openPilotCard(f) {
 function showFlightOnMap() {
     if (!currentSelectedFlight) return;
     
-    // Geçersiz koordinat koruması (parseFloat ve isNaN ile)
     const lat = parseFloat(currentSelectedFlight.latitude);
     const lon = parseFloat(currentSelectedFlight.longitude);
     
@@ -486,9 +364,7 @@ function showFlightOnMap() {
     const mapContainer = document.getElementById("flight-map-container");
     mapContainer.classList.remove("hidden");
     
-    // Haritayı başlat
     if (!leafletMap) {
-        // Leaflet CSS eklendi (HTML'de head'e eklemelisiniz ama dinamik ekliyoruz)
         if(!document.getElementById('leaflet-css')) {
             const link = document.createElement('link');
             link.id = 'leaflet-css';
@@ -497,43 +373,36 @@ function showFlightOnMap() {
             document.head.appendChild(link);
         }
 
-        // Haritayı oluştur
         leafletMap = L.map('flight-map').setView([lat, lon], 6);
         
-        // CartoDB Dark Matter katmanı (Modern koyu tema)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            attribution: '&copy; OpenStreetMap',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(leafletMap);
     } else {
-        // Zaten varsa sadece merkezi güncelle
         leafletMap.setView([lat, lon], 6);
     }
     
-    // Uçak ikonunu oluştur
     const planeIcon = L.divIcon({
         className: 'custom-plane-icon',
-        html: `<div style="transform: rotate(${currentSelectedFlight.heading}deg); color: #00F5D4; font-size: 24px;">✈️</div>`,
+        html: `<div style="transform: rotate(${currentSelectedFlight.heading || 0}deg); color: #00F5D4; font-size: 24px;">✈️</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
     });
 
-    // Önceki işaretçiyi temizle
     leafletMap.eachLayer((layer) => {
         if (layer instanceof L.Marker) {
             leafletMap.removeLayer(layer);
         }
     });
 
-    // Yeni işaretçiyi ekle
     L.marker([lat, lon], {icon: planeIcon})
      .addTo(leafletMap)
-     .bindPopup(`<b>${currentSelectedFlight.callsign}</b><br>Alt: ${Math.round(currentSelectedFlight.altitude)} ft<br>Spd: ${Math.round(currentSelectedFlight.speed)} kts`)
+     .bindPopup(`<b>${currentSelectedFlight.callsign}</b><br>Alt: ${Math.round(currentSelectedFlight.altitude || 0)} ft<br>Spd: ${Math.round(currentSelectedFlight.speed || 0)} kts`)
      .openPopup();
      
-     // Harita boyutunu düzelt (açıldığında tam render alması için)
-     setTimeout(() => leafletMap.invalidateSize(), 100);
+     setTimeout(() => { if(leafletMap) leafletMap.invalidateSize(); }, 100);
 }
 
 function closeMap() {
