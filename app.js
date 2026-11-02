@@ -17,25 +17,46 @@ async function fetchFlightData() {
         
         updateAtcBadges(); 
         
-        // Kalkış/Varış verilerini uçuş planından çek
-                // Kalkış/Varış verilerini uçuş planından çek (Eksikse N/A yaz)
-        flightsData.forEach(flight => {
-             if (flight.flightPlan && flight.flightPlan.waypoints && flight.flightPlan.waypoints.length > 0) {
-                 const waypoints = flight.flightPlan.waypoints;
-                 flight.originAirport = waypoints[0].name || "N/A";
-                 flight.destinationAirport = waypoints[waypoints.length - 1].name || "N/A";
-             } else {
-                 flight.originAirport = "N/A";
-                 flight.destinationAirport = "N/A";
-             }
+        // Uçaklara geçici Loading atıyoruz ki arka plan tarayıcısı bulabilsin
+        flightsData.forEach(f => {
+            if (!f.originAirport) f.originAirport = "Loading";
+            if (!f.destinationAirport) f.destinationAirport = "Loading";
         });
 
         updateTrendingWidget(); 
         renderActiveTab();
         
-        if (flightsData.length > 0) checkAutoPirep(flightsData);
-
+        if (flightsData.length > 0) {
+            checkAutoPirep(flightsData);
+            fillTrendsInBackground(); // SİLİNEN HAYATİ FONKSİYON BURADA
+        }
     } catch(e) { console.error("Fetch Error:", e); }
+}
+
+// Arka planda eksik rotaları çeken sistem
+async function fillTrendsInBackground() {
+    const missingRoutes = flightsData.filter(f => f.originAirport === "Loading").slice(0, 15);
+    if (missingRoutes.length === 0) return; 
+    
+    const payload = missingRoutes.map(f => ({ sessionId: f.sessionId, flightId: f.flightId }));
+    
+    try {
+        const res = await fetch(`${API_URL}?action=batch_routes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const updates = await res.json();
+        
+        updates.forEach(u => {
+            const flt = flightsData.find(f => f.flightId === u.flightId);
+            if (flt) {
+                flt.originAirport = u.origin || "N/A";
+                flt.destinationAirport = u.dest || "N/A";
+            }
+        });
+        updateTrendingWidget(); 
+    } catch (e) { console.error("Trend update failed", e); }
 }
 
 fetchFlightData();
