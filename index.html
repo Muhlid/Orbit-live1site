@@ -131,6 +131,22 @@
         <div class="panel-header">
             <h2 style="margin:0; color:var(--neon-cyan);">Pilot Card</h2>
             <button class="panel-close-btn" onclick="closeSidePanels()">&#x2715;</button>
+            <!-- index.html içine eklenecekler -->
+
+<!-- Harita için Leaflet kütüphanesi -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- pilot-side-panel içindeki butonlar arasına -->
+<button id="btn-show-map" class="glass-submit-btn" style="background:var(--neon-pink); color:#fff; display:none; margin-top: 10px;" onclick="showFlightOnMap()">📍 Show on Map</button>
+
+<!-- Ana container dışına veya sonuna eklenecek harita görünümü (gizli başlar) -->
+<div id="flight-map-container" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:80%; height:70%; background:#111; z-index:5000; border:2px solid var(--neon-cyan); border-radius:10px; display:flex; flex-direction:column;">
+    <div style="background:var(--neon-cyan); color:#000; padding:10px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+        <span>Flight Radar</span>
+        <button onclick="closeMap()" style="background:red; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:5px;">Close</button>
+    </div>
+    <div id="flight-map" style="flex-grow:1; width:100%;"></div>
+</div>
         </div>
         
         <div class="card-customizer">
